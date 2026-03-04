@@ -1,1 +1,2 @@
 when including this library , use an absolute path rather than a relative path to avoid any unexpected behaviour :)
+and use Arduino IDE to avoid any issues related to dependncies
