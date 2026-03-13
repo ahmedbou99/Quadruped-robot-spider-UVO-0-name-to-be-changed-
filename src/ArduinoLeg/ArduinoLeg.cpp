@@ -1,3 +1,6 @@
+
+//all length units are in mm
+//all angles are in degrees
 #include "Arduino.h"
 #include <Servo.h>
 #include "ArduinoLeg.h"
@@ -7,9 +10,10 @@ ArduinoLeg::ArduinoLeg(){
 };
 
 
- void ArduinoLeg::constructLeg(uint8_t hp, uint8_t kp){ //to attach the pins of knee and hip to servos
-L1 = 5.0;
-L2 = 5.5;
+ void ArduinoLeg::constructLeg(uint8_t hp, uint8_t kp){
+   //to attach the pins of knee and hip to servos
+L1 = 50; //in mm
+L2 = 50; //in mm
 hipServo.attach(hp);
 kneeServo.attach(kp);
 kneePin = kp;
@@ -17,7 +21,8 @@ hipPin = hp;
 isCalibrated = 0;
 };
 
-void ArduinoLeg::destroyLeg(){ //to separate the pins of knee and hip from servos
+void ArduinoLeg::destroyLeg(){
+  //to separate the pins of knee and hip from servos
 hipServo.detach();
 kneeServo.detach();
 };
@@ -29,17 +34,32 @@ isCalibrated = 1;
 };
 
 
-
- bool ArduinoLeg::goTo(float x, float y, float z){
-float ak = 180;
-float ah;
-//float g;
+//returns an array of angles (in degrees) where :
+//[0] is hip angle , [1] is knee angle
+ int* ArduinoLeg::goTo(float x, float y, float z){
+  float ah;
+  float ak;
 float b;
 float cosb;
 float L3;
 
+//limits in mm
+float yMin = 40;
+float zMin = -76;
+float yMax = 78;
+float zMax = -60;
 
-L3 = sqrt((y*y) + (z*z) + (x*x));
+if(z >= zMax || y >= yMax){
+ y = yMax;
+ z = zMax;
+}
+else if (z <= zMin || y <= yMin){
+  y = yMin;
+  z = zMin;
+}
+
+L3 = sqrt((y*y) + (z*z));
+
 
 
 ah = atan2(y,x) * 180/PI;
@@ -49,27 +69,27 @@ cosb = (L1*L1 + L2*L2 -L3*L3)/(2.0*L1*L2);
 b = acos(cosb); //knee angle
 
 
-ak = b*180/PI;
+ak =(b)*180/PI;
 
-ak = constrain(ak, 90,180);
-ah = constrain(ah, 0,180);
-
-
+//ak = constrain(ak, 90,180);
+//ah = constrain(ah, 0,180);
 
 
 
 
 
-
-if(L3 <= L1 +L2){
-  Serial.println(ah);
+Serial.println(ah);
 Serial.println(ak);
-  hipServo.write((int)ah);
-kneeServo.write((int)ak);
-return 1;
-}
-else {
-  Serial.println("coordinates out of reach");
-  return 0;
-};
+
+
+int* angles = new int[2];
+angles[0] = ah;
+angles[1] = ak;
+
+return angles;
+
+
+ //this method doesnt write the angles to the servos , it just gives the angles
+//for back legs of the robot , knee angles shall be reversed by substracting them from 180 degrees
+
 };

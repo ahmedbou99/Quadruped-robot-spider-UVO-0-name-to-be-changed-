@@ -17,7 +17,8 @@ bool isCalibrated;
 void constructLeg(uint8_t hp, uint8_t kp);
 void destroyLeg();
 void calibrateLeg();
-bool goTo(float x, float y, float z);
+int* goTo(float x, float y, float z);
+
 };
 
 
