@@ -1,0 +1,36 @@
+#ifndef MOVEMENT_H
+#define MOVEMENT_H
+
+#include <Arduino.h>
+
+
+struct Movement {
+  const char* name;
+  int frameCount;
+  int delayMs;
+
+  int keyframes[4][2][16];
+  
+  Movement(const char* n, int frames, int delay) 
+    : name(n), frameCount(frames), delayMs(delay) {}
+};
+
+// Forward
+class ForwardMovement : public Movement {
+public:
+  ForwardMovement();
+};
+
+// Backward
+class BackwardMovement : public Movement {
+public:
+  BackwardMovement();
+};
+
+// Rest
+class RestMovement : public Movement {
+public:
+  RestMovement();
+};
+
+#endif
