@@ -73,7 +73,7 @@ RotateRightMovement::RotateRightMovement() : Movement("RotateRight", 16, 100) {
 
 RotateLeftMovement::RotateLeftMovement() : Movement("LeftRight", 4, 100) {
   int data[4][2][16] = {
-    //first four to push , the rest is to stabilize aaaaaaaaaaaaaaaah
+    //first four to push , the erst is to stabilize aaaaaaaaaaaaaaaah
 
        //right front
       {{150,150,150,150,   150,180,180,150,      150,150,150,150     ,150,180,180,150}, 
