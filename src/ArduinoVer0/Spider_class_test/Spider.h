@@ -46,6 +46,8 @@ public:
   void moveBackward(int iterations = 1);
   void RotateRight(int iterations = 1);
   void RotateLeft(int iterations = 1);
+  //added squatting THE MOST UNDERRATED MOVE OAT
+  void Squat(int iterations = 1);
 };
 
 #endif
