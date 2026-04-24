@@ -71,9 +71,9 @@ RotateRightMovement::RotateRightMovement() : Movement("RotateRight", 16, 100) {
   memcpy(keyframes, data, sizeof(data));
 }
 
-RotateLeftMovement::RotateLeftMovement() : Movement("LeftRight", 4, 100) {
+RotateLeftMovement::RotateLeftMovement() : Movement("RotateLeft", 4, 100) {
   int data[4][2][16] = {
-    //first four to push , the rest is to stabilize aaaaaaaaaaaaaaaah
+    //first four to push , the erst is to stabilize aaaaaaaaaaaaaaaah
 
        //right front
       {{150,150,150,150,   150,180,180,150,      150,150,150,150     ,150,180,180,150}, 
@@ -97,5 +97,41 @@ RotateLeftMovement::RotateLeftMovement() : Movement("LeftRight", 4, 100) {
   };
   
   memcpy(keyframes, data, sizeof(data));
+}
+
+
+//added squatting THE MOST UNDERRATED MOVE OAT
+SquatMovement :: SquatMovement() : Movement("Squat",4,100) {
+int data[4][2][16] = {
+  //right front
+  {
+    {150,160,170,180},
+   {45,45,45,45}
+   },
+
+   //right back
+  {
+    {30,20,10,0},
+    {135,135,135,135}
+  }
+  ,
+  //left front
+  {
+    {150,160,170,180},
+    {135,135,135,135}
+  },
+
+  //left back
+  {
+    {30,20,10,0},
+    {45,45,45,45}
+  }
+
+
+
+};
+
+
+memcpy(keyframes, data, sizeof(data));
 }
 

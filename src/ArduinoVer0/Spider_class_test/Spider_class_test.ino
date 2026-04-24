@@ -40,17 +40,14 @@ spider.RotateLeft();
 case 5 :
 Serial.println("Squatting"); 
 spider.Squat();
-         break;      1
-             
-
-
-
-
+         break;   
+           
 case 0 : 
 Serial.println("Resting");
 spider.rest();
 break;
-}
+
+};
 }
 spider.rest();
 delay(100);

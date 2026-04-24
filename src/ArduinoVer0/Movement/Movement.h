@@ -40,4 +40,12 @@ public:
   RotateLeftMovement();
 };
 
+//Squat
+//added squatting THE MOST UNDERRATED MOVE OAT
+
+class SquatMovement : public Movement {
+public:
+  SquatMovement();
+};
+
 #endif

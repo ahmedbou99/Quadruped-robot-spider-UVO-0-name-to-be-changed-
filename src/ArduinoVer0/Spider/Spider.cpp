@@ -83,3 +83,8 @@ void Spider::RotateLeft(int iterations) {
   RotateLeftMovement rotateleft;
   executeMovement(rotateleft, iterations);
 }
+//added squatting THE MOST UNDERRATED MOVE OAT
+void Spider :: Squat(int iterations){
+  SquatMovement squat;
+  executeMovement(squat,iterations);
+}
