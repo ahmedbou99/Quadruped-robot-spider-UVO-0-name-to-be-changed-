@@ -1,0 +1,2 @@
+when including this library , put the library header and implementation file in the same directory as your ino file
+and use Arduino IDE to avoid any issues related to dependencies :)
