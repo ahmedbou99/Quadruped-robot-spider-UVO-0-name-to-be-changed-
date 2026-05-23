@@ -52,7 +52,7 @@ RotateRightMovement::RotateRightMovement() : Movement("RotateRight", 16, 100) {
   int data[4][2][16] = {
       { 
       {150,160,170,180,150,150,150,150,150,150,150,150,150,180,180,150}, //right front knee
-      {45,30,10,0,0,0,0,0,0,0,0,0,0,0,45,45}                  
+      {45,30,10,0,0,0,0,0,0,0,0,0,0,0,45,45}   //right front hip               
     },
     { 
       {20,20,20,20,0,0,20,20,20,20,20,20,20,20,20,20}, // right back knee
@@ -73,7 +73,7 @@ RotateRightMovement::RotateRightMovement() : Movement("RotateRight", 16, 100) {
 
 RotateLeftMovement::RotateLeftMovement() : Movement("RotateLeft", 4, 100) {
   int data[4][2][16] = {
-    //first four to push , the erst is to stabilize aaaaaaaaaaaaaaaah
+    //first four to push , the rest is to stabilize aaaaaaaaaaaaaaaah
 
        //right front
       {{150,150,150,150,   150,180,180,150,      150,150,150,150     ,150,180,180,150}, 
@@ -96,7 +96,7 @@ RotateLeftMovement::RotateLeftMovement() : Movement("RotateLeft", 4, 100) {
     }
   };
   
-  memcpy(keyframes, data, sizeof(data));
+  memcpy(keyframes, data, sizeof(data)); 
 }
 
 
@@ -135,3 +135,42 @@ int data[4][2][16] = {
 memcpy(keyframes, data, sizeof(data));
 }
 
+
+
+//Wiggle
+WiggleMovement :: WiggleMovement() : Movement("Wiggle",6,100){
+int data[4][2][16] = {
+//right front
+{
+ {150,165,180,180,165,150},
+ {45,45,45,45,45,45}
+},
+
+
+
+//right back
+{
+ {20,10,0,0,10,20},
+ {135,135,135,135,135,135}
+},
+
+
+//left front
+{
+ {150,150,150,150,165,180},
+ {135,135,135,135,135,135} 
+},
+
+
+
+
+
+//left back
+{
+ {20,20,20,20,10,0},
+ {45,45,45,45,45,45}
+}
+};
+
+memcpy(keyframes, data, sizeof(data));
+}

@@ -14,7 +14,7 @@ spider.rest();
 }
 
 void loop() {
-  
+      /*
 if (Serial.available() > 0){
 int mv = Serial.parseInt();
 
@@ -49,7 +49,9 @@ break;
 
 };
 }
-spider.rest();
+*/
+spider.Wiggle();
+//spider.rest();
 delay(100);
 
 }

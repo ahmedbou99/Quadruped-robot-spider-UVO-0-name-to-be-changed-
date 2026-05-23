@@ -88,3 +88,10 @@ void Spider :: Squat(int iterations){
   SquatMovement squat;
   executeMovement(squat,iterations);
 }
+
+
+//added wiggling
+void Spider :: Wiggle(int iterations){
+  WiggleMovement wiggle;
+  executeMovement(wiggle,iterations);
+}

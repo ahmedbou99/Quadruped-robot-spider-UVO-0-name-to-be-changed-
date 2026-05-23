@@ -48,4 +48,12 @@ public:
   SquatMovement();
 };
 
+//Wiggle
+//added wiggling (i guess spiders do that to look intimidating to predators :)  )
+class WiggleMovement : public Movement {
+public:
+   WiggleMovement();
+};
+
+
 #endif

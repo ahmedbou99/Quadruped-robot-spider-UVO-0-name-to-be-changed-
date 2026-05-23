@@ -48,6 +48,8 @@ public:
   void RotateLeft(int iterations = 1);
   //added squatting THE MOST UNDERRATED MOVE OAT
   void Squat(int iterations = 1);
+  //added wiggling
+  void Wiggle(int iterations = 1);
 };
 
 #endif
