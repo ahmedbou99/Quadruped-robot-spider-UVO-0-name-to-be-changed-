@@ -14,7 +14,7 @@ spider.rest();
 }
 
 void loop() {
-      /*
+      
 if (Serial.available() > 0){
 int mv = Serial.parseInt();
 
@@ -41,6 +41,11 @@ case 5 :
 Serial.println("Squatting"); 
 spider.Squat();
          break;   
+
+case 6 :
+Serial.println("Wiggling"); 
+spider.Wiggle();
+         break;          
            
 case 0 : 
 Serial.println("Resting");
@@ -49,9 +54,8 @@ break;
 
 };
 }
-*/
-spider.Wiggle();
-//spider.rest();
+//spider.Wiggle();
+spider.rest();
 delay(100);
 
 }
