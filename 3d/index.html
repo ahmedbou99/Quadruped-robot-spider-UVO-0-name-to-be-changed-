@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quadruped Robot Spider — Movement Showcase</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0e14;
+    --surface: #12171f;
+    --border: #1e2a38;
+    --text: #c9d1d9;
+    --muted: #5c6e80;
+    --accent: #58a6ff;
+    --rf: #ff4444;
+    --rb: #44cc88;
+    --lf: #ff8800;
+    --lb: #4488ff;
+  }
+
+  body {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  header h1 { font-size: 1.05rem; font-weight: 700; }
+  header .chip {
+    font-size: 0.68rem;
+    padding: 3px 10px;
+    border-radius: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+
+  .main { flex: 1; display: flex; min-height: 0; }
+
+  .viz {
+    flex: 1;
+    position: relative;
+    cursor: grab;
+    min-width: 0;
+    background: radial-gradient(ellipse at 50% 45%, #141c26 0%, var(--bg) 70%);
+  }
+  .viz:active { cursor: grabbing; }
+  .viz canvas { display: block; }
+
+  .loading-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    z-index: 10;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  .loading-overlay.done { opacity: 0; }
+  .loading-text { font-size: 0.85rem; color: var(--accent); }
+
+  .side {
+    width: 360px;
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  .pills { display: flex; flex-wrap: wrap; gap: 5px; }
+  .pill {
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 600;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .pill:hover { border-color: var(--accent); }
+  .pill.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+  }
+  .card h3 {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .row { display: flex; justify-content: space-between; padding: 2px 0; font-size: 0.72rem; }
+  .row .label { color: var(--muted); }
+  .row .val { font-weight: 600; }
+
+  .ctrl-row { display: flex; align-items: center; gap: 8px; }
+  .btn {
+    width: 32px; height: 32px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn.go { background: #1a3a2a; border-color: #2d5a3d; }
+
+  .speed-row { display: flex; align-items: center; gap: 6px; font-size: 0.7rem; }
+  .speed-row input[type=range] { accent-color: var(--accent); width: 80px; }
+
+  .frame-num { font-size: 0.82rem; font-weight: 700; text-align: center; min-width: 70px; }
+
+  .timeline { display: flex; gap: 2px; padding: 3px 0; }
+  .timeline .tick { flex: 1; height: 6px; border-radius: 2px; background: var(--border); transition: background 0.1s; }
+  .timeline .tick.hot { background: var(--accent); }
+
+  .leg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .leg-cell {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 5px; padding: 6px; font-size: 0.68rem;
+  }
+  .leg-cell .leg-label { font-weight: 700; margin-bottom: 2px; }
+  .leg-cell .leg-ang { color: var(--muted); }
+  .leg-cell .leg-ang b { color: var(--text); }
+
+  .cal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+  .cal-servo { font-size: 0.66rem; }
+  .cal-servo .cal-label { font-weight: 700; margin-bottom: 2px; }
+  .cal-servo .cal-row { display: flex; align-items: center; gap: 3px; margin-top: 1px; }
+  .cal-servo .cal-row span { color: var(--muted); width: 16px; text-align: right; flex-shrink: 0; }
+  .cal-servo input[type=number] {
+    width: 40px; background: var(--bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 3px;
+    padding: 1px 3px; font: inherit; font-size: 0.66rem; text-align: center;
+  }
+  .cal-servo input[type=number]:focus { outline: none; border-color: var(--accent); }
+  .cal-reset { font-size: 0.63rem; color: var(--accent); cursor: pointer; background: none; border: none; font: inherit; padding: 1px 0; }
+  .cal-reset:hover { text-decoration: underline; }
+
+  /* Placement */
+  .place-row { display: flex; align-items: center; gap: 3px; margin-top: 1px; font-size: 0.65rem; }
+  .place-row label { color: var(--muted); width: 12px; text-align: right; flex-shrink: 0; }
+  .place-row input[type=number] {
+    width: 44px; background: var(--bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 3px;
+    padding: 1px 2px; font: inherit; font-size: 0.65rem; text-align: center;
+  }
+  .place-row input[type=number]:focus { outline: none; border-color: var(--accent); }
+  .part-select {
+    width: 100%; background: var(--bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 4px 6px; font: inherit; font-size: 0.67rem; margin-bottom: 3px;
+  }
+  .part-select:focus { outline: none; border-color: var(--accent); }
+  .cfg-btn {
+    padding: 4px 10px; border: 1px solid var(--border); border-radius: 4px;
+    background: var(--bg); color: var(--text); cursor: pointer;
+    font: inherit; font-size: 0.65rem; transition: all 0.15s;
+  }
+  .cfg-btn:hover { border-color: var(--accent); }
+  .cfg-btn.acc { border-color: var(--accent); color: var(--accent); }
+
+  .foot {
+    padding: 7px 18px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.7rem;
+    flex-shrink: 0;
+  }
+  .foot select {
+    background: var(--bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 3px 6px; font: inherit; font-size: 0.7rem;
+  }
+  .foot .hint { color: var(--muted); margin-left: auto; }
+
+  @media (max-width: 860px) {
+    .main { flex-direction: column; }
+    .side { width: 100%; border-left: none; border-top: 1px solid var(--border); max-height: 45vh; }
+    .viz { min-height: 300px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Quadruped Robot Spider</h1>
+    <span style="font-size:0.65rem;color:var(--muted);">Movement Keyframe Visualizer</span>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <span class="chip" id="fps-chip">—</span>
+    <span class="chip">hope U like it!</span>
+  </div>
+</header>
+
+<div class="main">
+  <div class="viz" id="viewer">
+    <div class="loading-overlay" id="loader"><span class="loading-text">Loading STL models...</span></div>
+  </div>
+
+  <div class="side">
+    <div class="pills" id="pills"></div>
+
+    <div class="card">
+      <h3>Movement</h3>
+      <div class="row"><span class="label">Name</span><span class="val" id="m-name">—</span></div>
+      <div class="row"><span class="label">Frames</span><span class="val" id="m-frames">—</span></div>
+      <div class="row"><span class="label">Delay</span><span class="val" id="m-delay">—</span></div>
+      <div class="row"><span class="label">Cycle</span><span class="val" id="m-cycle">—</span></div>
+    </div>
+
+    <div class="ctrl-row" style="justify-content:space-between;">
+      <div class="ctrl-row">
+        <button class="btn" id="b-prev" title="Previous frame">◀</button>
+        <button class="btn go" id="b-play" title="Play / Pause">▶</button>
+        <button class="btn" id="b-next" title="Next frame">▶</button>
+      </div>
+      <div class="frame-num" id="frame-label">0 / 0</div>
+      <div class="speed-row">
+        <span style="color:var(--muted)">1×</span>
+        <input type="range" id="speed" min="0.25" max="3" step="0.25" value="1">
+        <span style="color:var(--muted)">3×</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Timeline</h3>
+      <div class="timeline" id="timeline"></div>
+    </div>
+
+    <div class="card">
+      <h3>Current Keyframe — Leg Angles</h3>
+      <div class="leg-grid" id="leg-data"></div>
+    </div>
+
+    <div class="card">
+      <h3>Legend</h3>
+      <div class="leg-grid" id="legend"></div>
+    </div>
+
+    <div class="card">
+      <h3>Servo Calibration — 0° / 180° mapping</h3>
+      <div class="cal-grid" id="cal-grid"></div>
+      <button class="cal-reset" id="cal-reset">↺ Reset all to default</button>
+    </div>
+
+    <div class="card">
+      <h3>Part Placement</h3>
+      <select class="part-select" id="part-select"></select>
+      <div style="display:flex;gap:4px;margin-bottom:3px;">
+        <button class="pill tx-btn on" id="tx-translate" style="font-size:0.6rem;padding:3px 8px;">W Translate</button>
+        <button class="pill tx-btn" id="tx-rotate" style="font-size:0.6rem;padding:3px 8px;">E Rotate</button>
+      </div>
+      <div class="place-row"><label>X</label><input type="number" id="pl-px" step="0.1"> <label>Y</label><input type="number" id="pl-py" step="0.1"> <label>Z</label><input type="number" id="pl-pz" step="0.1"><span>mm</span></div>
+      <div class="place-row"><label>R</label><input type="number" id="pl-rx" step="1"> <label>P</label><input type="number" id="pl-ry" step="1"> <label>Y</label><input type="number" id="pl-rz" step="1"><span>deg</span></div>
+      <button class="cal-reset" id="pl-reset">↺ Reset selected part</button>
+      <button class="cal-reset" id="pl-reset-model">↺ Reset all model placements</button>
+      <button class="cal-reset" id="pl-reset-skel">↺ Reset all skeleton placements</button>
+    </div>
+
+    <div class="card">
+      <h3>Leg Lengths</h3>
+      <select class="part-select" id="len-leg" style="margin-bottom:3px;">
+        <option value="RF">RF</option><option value="RB">RB</option><option value="LF">LF</option><option value="LB">LB</option>
+      </select>
+      <div class="place-row"><label>F</label><input type="number" id="len-femur" step="0.5" min="1"> <span>femur mm</span></div>
+      <div class="place-row"><label>T</label><input type="number" id="len-tibia" step="0.5" min="1"> <span>tibia mm</span></div>
+      <button class="cal-reset" id="len-reset">↺ Reset lengths</button>
+    </div>
+
+    <div class="card">
+      <h3>Config — Save / Load</h3>
+      <div style="display:flex;gap:6px;">
+        <button class="cfg-btn acc" id="cfg-export">Export JSON</button>
+        <button class="cfg-btn" id="cfg-import">Import JSON</button>
+      </div>
+      <input type="file" id="cfg-file" accept=".json" style="display:none">
+    </div>
+  </div>
+</div>
+
+<div class="foot">
+  <label>Auto-cycle:</label>
+  <select id="auto">
+    <option value="0" selected>Off</option>
+    <option value="6">Every 6s</option>
+    <option value="10">Every 10s</option>
+    <option value="20">Every 20s</option>
+  </select>
+  <label style="margin-left:12px;">Skeleton:</label>
+  <input type="checkbox" id="skel-toggle" checked>
+  <label style="margin-left:6px;">Gravity:</label>
+  <input type="checkbox" id="grav-toggle" checked>
+  <span class="hint">Drag to rotate · scroll to zoom · Space=play/pause ←→=step ↑↓=speed 1-6=movement</span>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { TransformControls } from 'three/addons/controls/TransformControls.js';
+
+// ────────────────────────────────────
+//  KEYFRAME DATA
+// ────────────────────────────────────
+const MOV = {
+  Forward: {
+    desc: 'Walking gait — alternating diagonal leg pairs.', fc: 16, delay: 100,
+    legs: [
+      { id:'RF', knee:[150,150,150,150,180,180,180,150,150,150,150,150,150,150,150,150], hip:[30,20,10,0,0,30,60,90,90,80,70,60,50,45,40,30] },
+      { id:'RB', knee:[0,0,0,20,20,20,20,20,20,20,20,20,20,20,20,20],            hip:[90,120,150,180,180,170,160,150,140,130,120,110,105,100,95,90] },
+      { id:'LF', knee:[150,150,150,150,150,150,150,150,150,150,150,150,180,180,180,150], hip:[90,100,110,120,130,140,150,160,165,170,175,180,180,150,120,90] },
+      { id:'LB', knee:[20,20,20,20,20,20,20,20,0,0,0,20,20,20,20,20],            hip:[30,40,50,60,70,80,85,90,90,60,30,0,0,10,20,30] }
+    ]
+  },
+  Backward: {
+    desc: 'Reverse walking gait.', fc: 16, delay: 100,
+    legs: [
+      { id:'RF', knee:[150,150,150,150,150,150,150,150,150,180,180,180,150,150,150,150], hip:[30,40,45,50,60,70,80,90,90,60,30,0,0,10,20,30] },
+      { id:'RB', knee:[20,20,20,20,20,20,20,20,20,20,20,20,20,0,0,0],            hip:[90,95,100,105,110,120,130,140,150,160,170,180,180,150,120,90] },
+      { id:'LF', knee:[150,180,180,180,150,150,150,150,150,150,150,150,150,150,150,150], hip:[90,120,150,180,180,175,170,165,160,150,140,130,120,110,100,90] },
+      { id:'LB', knee:[20,20,20,20,20,0,0,0,20,20,20,20,20,20,20,20],            hip:[30,20,10,0,0,30,60,90,90,85,80,70,60,50,40,30] }
+    ]
+  },
+  RotateRight: {
+    desc: 'Right turn.', fc: 16, delay: 100,
+    legs: [
+      { id:'RF', knee:[150,160,170,180,150,150,150,150,150,150,150,150,150,180,180,150], hip:[45,30,10,0,0,0,0,0,0,0,0,0,0,0,45,45] },
+      { id:'RB', knee:[20,20,20,20,0,0,20,20,20,20,20,20,20,20,20,20],            hip:[135,145,160,180,180,135,135,135,135,135,135,135,135,135,135,135] },
+      { id:'LF', knee:[150,150,150,150,150,150,150,150,150,150,180,180,150,150,150,150], hip:[135,145,160,180,180,180,180,180,180,180,180,135,135,135,135,135] },
+      { id:'LB', knee:[20,20,20,20,20,20,20,0,0,20,20,20,20,20,20,20],            hip:[45,55,70,90,90,90,90,90,0,0,0,0,0,0,0,0] }
+    ]
+  },
+  RotateLeft: {
+    desc: 'Left turn.', fc: 16, delay: 100,
+    legs: [
+      { id:'RF', knee:[150,150,150,150,150,180,180,150,150,150,150,150,150,180,180,150], hip:[45,30,10,0,0,20,30,45,45,45,45,45,0,0,45,45] },
+      { id:'RB', knee:[20,20,20,20,20,20,20,20,20,0,0,20,20,20,20,20],            hip:[135,145,160,180,180,180,180,180,180,160,150,135,135,135,135,135] },
+      { id:'LF', knee:[150,160,180,150,150,150,150,150,150,150,150,150,150,150,150,150], hip:[135,150,160,180,180,180,180,180,180,180,180,180,180,135,135,135] },
+      { id:'LB', knee:[20,20,20,20,20,20,20,20,20,20,20,20,20,0,0,20],            hip:[45,55,70,90,90,90,90,90,90,90,90,90,90,75,60,45] }
+    ]
+  },
+  Squat: {
+    desc: 'Squat — all knees bend simultaneously.', fc: 4, delay: 100,
+    legs: [
+      { id:'RF', knee:[150,160,170,180], hip:[45,45,45,45] },
+      { id:'RB', knee:[30,20,10,0],     hip:[135,135,135,135] },
+      { id:'LF', knee:[150,160,170,180], hip:[135,135,135,135] },
+      { id:'LB', knee:[30,20,10,0],     hip:[45,45,45,45] }
+    ]
+  },
+  Wiggle: {
+    desc: 'Wiggle — alternating legs shift side-to-side.', fc: 6, delay: 100,
+    legs: [
+      { id:'RF', knee:[150,165,180,180,165,150], hip:[45,45,45,45,45,45] },
+      { id:'RB', knee:[20,10,0,0,10,20],         hip:[135,135,135,135,135,135] },
+      { id:'LF', knee:[150,150,150,150,165,180], hip:[135,135,135,135,135,135] },
+      { id:'LB', knee:[20,20,20,20,10,0],         hip:[45,45,45,45,45,45] }
+    ]
+  }
+};
+
+const LEG_COLOR = { RF:'#ff4444', RB:'#44cc88', LF:'#ff8800', LB:'#4488ff' };
+const LEG_IDS = ['RF','RB','LF','LB'];
+const NAMES = Object.keys(MOV);
+
+// Calibration
+const defaultCal = () => {
+  const c = {};
+  LEG_IDS.forEach(id => { c[id] = { hipZero: 0, hipMax: 180, kneeZero: 0, kneeMax: 180 }; });
+  return c;
+};
+let servoCal = defaultCal();
+
+// ── Part placement offsets ──
+const MODEL_PARTS = ['body', 'head', 'RF_femur','RF_foot','RB_femur','RB_foot',
+  'LF_femur','LF_foot','LB_femur','LB_foot'];
+const SKEL_PARTS = [];
+LEG_IDS.forEach(id => {
+  ['femur','knee'].forEach(p => SKEL_PARTS.push('sk_' + id + '_' + p));
+});
+const PART_IDS = [...MODEL_PARTS, ...SKEL_PARTS];
+const defaultPlacement = () => {
+  const p = {};
+  PART_IDS.forEach(k => {
+    let rx = 0;
+    if (k.startsWith('sk_')) {
+      // skeleton knee: no extra. skeleton femur (hip): 20° down tilt
+      if (k.endsWith('_femur')) rx = 20;
+    } else if (k.endsWith('_femur')) {
+      rx = 90;
+    } else if (k.endsWith('_foot')) {
+      rx = 180;
+    }
+    p[k] = { px:0, py:0, pz:0, rx, ry:0, rz:0 };
+  });
+  return p;
+};
+let placements = defaultPlacement();
+const placementGroups = {}; // { partId: THREE.Group }
+
+function applyPlacements() {
+  txProgrammatic = true;
+  Object.entries(placementGroups).forEach(([id, grp]) => {
+    const pl = placements[id];
+    if (!pl) return;
+    grp.position.set(pl.px, pl.py, pl.pz);
+    grp.rotation.set(pl.rx * Math.PI/180, pl.ry * Math.PI/180, pl.rz * Math.PI/180);
+  });
+  txProgrammatic = false;
+}
+
+// State
+let curMov = 'Forward';
+let curFrame = 0;
+let playing = true;
+let speed = 1;
+let tick = 0;
+let autoSec = 0;
+let autoAcc = 0;
+let fpsCnt = 0, fpsSec = 0, fpsVal = 0;
+let lastT = 0;
+
+function applyCal(codeAngle, calZero, calMax) {
+  return calZero + (codeAngle / 180) * (calMax - calZero);
+}
+
+// ────────────────────────────────────
+//  THREE.JS SETUP
+// ────────────────────────────────────
+const viewer = document.getElementById('viewer');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+viewer.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+
+// Camera
+const camera = new THREE.PerspectiveCamera(45, 2, 0.1, 800);
+camera.position.set(40, 25, 50);
+camera.lookAt(0, 2, 0);
+
+// Orbit controls
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 2, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 2;
+controls.maxDistance = 300;
+controls.zoomSpeed = 1.5;
+controls.maxPolarAngle = Math.PI * 0.7;
+controls.update();
+
+// Transform controls for direct 3D part manipulation
+const txControls = new TransformControls(camera, renderer.domElement);
+txControls.setSize(0.8);
+txControls.space = 'local';
+txControls.addEventListener('dragging-changed', (e) => {
+  controls.enabled = !e.value; // disable orbit while dragging gizmo
+});
+let txProgrammatic = false;
+txControls.addEventListener('objectChange', () => {
+  if (txProgrammatic) return;
+  // Sync transform back to placement values and UI
+  if (txControls.object && selectedPart) {
+    const pl = placements[selectedPart];
+    const obj = txControls.object;
+    pl.px = +obj.position.x.toFixed(1);
+    pl.py = +obj.position.y.toFixed(1);
+    pl.pz = +obj.position.z.toFixed(1);
+    pl.rx = +((obj.rotation.x * 180) / Math.PI).toFixed(0);
+    pl.ry = +((obj.rotation.y * 180) / Math.PI).toFixed(0);
+    pl.rz = +((obj.rotation.z * 180) / Math.PI).toFixed(0);
+    loadPlacementValues();
+  }
+});
+scene.add(txControls);
+
+let txMode = 'translate';
+function setTxMode(mode) {
+  txMode = mode;
+  txControls.setMode(mode);
+  document.querySelectorAll('.tx-btn').forEach(b => b.classList.remove('on'));
+  const btn = document.getElementById('tx-' + mode);
+  if (btn) btn.classList.add('on');
+}
+setTxMode('translate');
+
+// Attach controls to selected placement group
+function attachTxControls() {
+  const grp = placementGroups[selectedPart];
+  if (grp) txControls.attach(grp);
+}
+window.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'w') setTxMode('translate');
+  if (e.key === 'e') setTxMode('rotate');
+});
+
+// ── Gravity + Camera tracking ──
+let autoHeight = true;
+
+function trackRobot() {
+  const rp = new THREE.Vector3();
+  robot.getWorldPosition(rp);
+  controls.target.lerp(new THREE.Vector3(rp.x, 2, rp.z), 0.1);
+}
+
+function updateGridPosition() {
+  const rp = new THREE.Vector3();
+  robot.getWorldPosition(rp);
+  grid.position.x = rp.x;
+  grid.position.z = rp.z;
+}
+
+const prevLocal = {};
+LEG_IDS.forEach(id => { prevLocal[id] = null; });
+
+function updateContactPoints() {
+  const tmp = new THREE.Vector3();
+  const local = new THREE.Vector3();
+  let lowestY = Infinity;
+  let sumDx = 0, sumDz = 0, stanceCount = 0;
+
+  LEG_IDS.forEach(id => {
+    const tip = legMeshes[id]?.tipSphere;
+    if (!tip) return;
+    tip.getWorldPosition(tmp);
+    if (tmp.y < lowestY) lowestY = tmp.y;
+
+    // Robot-local foot position (depends only on leg kinematics)
+    robot.worldToLocal(tmp, local);
+
+    const ring = contactMarkers[id];
+    const line = contactLines[id];
+    const onGround = tmp.y <= groundY + 3;
+
+    if (onGround) {
+      ring.visible = true;
+      ring.position.set(tmp.x, groundY + 0.01, tmp.z);
+      ring.material.opacity = tmp.y <= groundY ? 1 : 0.5;
+      const pts = [tmp.clone(), new THREE.Vector3(tmp.x, groundY, tmp.z)];
+      line.geometry.dispose();
+      line.geometry = new THREE.BufferGeometry().setFromPoints(pts);
+      line.visible = true;
+
+      // Friction: foot on ground shouldn't slide. Body moves to compensate leg sweep.
+      if (prevLocal[id]) {
+        sumDx += local.x - prevLocal[id].x;
+        sumDz += local.z - prevLocal[id].z;
+        stanceCount++;
+      }
+    } else {
+      ring.visible = false;
+      line.visible = false;
+    }
+
+    prevLocal[id] = { x: local.x, z: local.z };
+  });
+
+  // Move body opposite to foot sweep
+  if (stanceCount > 0 && autoHeight) {
+    robot.position.x -= sumDx / stanceCount;
+    robot.position.z -= sumDz / stanceCount;
+  }
+
+  if (autoHeight && isFinite(lowestY)) {
+    robot.position.y += (groundY - lowestY) * 0.15;
+  }
+}
+
+// Lighting
+const ambient = new THREE.AmbientLight(0x334455, 2.5);
+scene.add(ambient);
+const key = new THREE.DirectionalLight(0xffffff, 4);
+key.position.set(15, 25, 20);
+key.castShadow = true;
+key.shadow.mapSize.set(1024, 1024);
+key.shadow.camera.near = 0.5;
+key.shadow.camera.far = 150;
+key.shadow.camera.left = -40;
+key.shadow.camera.right = 40;
+key.shadow.camera.top = 40;
+key.shadow.camera.bottom = -10;
+key.shadow.bias = -0.0001;
+scene.add(key);
+const fill = new THREE.DirectionalLight(0x8899cc, 1.5);
+fill.position.set(-10, 5, -10);
+scene.add(fill);
+const rim = new THREE.DirectionalLight(0xffffff, 1);
+rim.position.set(0, 2, -20);
+scene.add(rim);
+
+// Ground — tiled
+const tileCanvas = document.createElement('canvas');
+tileCanvas.width = 512; tileCanvas.height = 512;
+const tctx = tileCanvas.getContext('2d');
+tctx.fillStyle = '#1a2028'; tctx.fillRect(0, 0, 512, 512);
+tctx.strokeStyle = '#252e38'; tctx.lineWidth = 1;
+for (let i = 0; i <= 16; i++) {
+  tctx.beginPath(); tctx.moveTo(i*32,0); tctx.lineTo(i*32,512); tctx.stroke();
+  tctx.beginPath(); tctx.moveTo(0,i*32); tctx.lineTo(512,i*32); tctx.stroke();
+}
+tctx.strokeStyle = '#354050'; tctx.lineWidth = 2;
+for (let i = 0; i <= 16; i += 4) {
+  tctx.beginPath(); tctx.moveTo(i*32,0); tctx.lineTo(i*32,512); tctx.stroke();
+  tctx.beginPath(); tctx.moveTo(0,i*32); tctx.lineTo(512,i*32); tctx.stroke();
+}
+const tileTex = new THREE.CanvasTexture(tileCanvas);
+tileTex.wrapS = THREE.RepeatWrapping; tileTex.wrapT = THREE.RepeatWrapping;
+tileTex.repeat.set(12, 12); tileTex.needsUpdate = true;
+
+const groundGeo = new THREE.PlaneGeometry(400, 400);
+const groundMat = new THREE.MeshStandardMaterial({ map: tileTex, roughness: 0.5, metalness: 0.1 });
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = 0;
+ground.receiveShadow = true;
+ground.frustumCulled = false;
+ground.renderOrder = 1;
+scene.add(ground);
+
+// Grid follows robot
+const grid = new THREE.PolarGridHelper(80, 64, 48, 256, 0x3a4050, 0x2a3038);
+grid.position.y = 0.005;
+grid.frustumCulled = false;
+grid.renderOrder = 2;
+scene.add(grid);
+
+// ── Contact markers ──
+const groundY = 0;
+const contactMarkers = {};
+const contactLines = {};
+LEG_IDS.forEach(id => {
+  const ringGeo = new THREE.RingGeometry(1.2, 2.0, 16);
+  const ringMat = new THREE.MeshBasicMaterial({ color: LEG_COLOR[id], side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = groundY + 0.01;
+  ring.visible = false;
+  scene.add(ring);
+  contactMarkers[id] = ring;
+  const lineGeo = new THREE.BufferGeometry();
+  const lineMat = new THREE.LineBasicMaterial({ color: LEG_COLOR[id], transparent: true, opacity: 0.5 });
+  const line = new THREE.Line(lineGeo, lineMat);
+  scene.add(line);
+  contactLines[id] = line;
+});
+
+// ── Robot assembly ──
+const robot = new THREE.Group();
+scene.add(robot);
+
+// Body pivot groups per leg
+const legPivots = {}; // { RF: { hip: Group, knee: Group }, ... }
+const legMeshes = {}; // { RF: { femur: Mesh, tibia: Mesh, foot: Mesh }, ... }
+const bodyCorner = { RF:{x:3.2,y:0,z:-2.2}, RB:{x:3.2,y:0,z:2.2}, LF:{x:-3.2,y:0,z:-2.2}, LB:{x:-3.2,y:0,z:2.2} };
+const legPlaneAngle = { RF: -Math.PI/4, RB: Math.PI/4, LF: -3*Math.PI/4, LB: 3*Math.PI/4 };
+
+function createLegGroup(legId) {
+  // Leg roots are attached later in assembleRobot (under body group)
+  const planeAng = legPlaneAngle[legId];
+
+  const root = new THREE.Group();
+  root.rotation.y = planeAng;
+
+  // Skeleton hip placement — moves entire hip assembly
+  const skHipPG = new THREE.Group();
+  root.add(skHipPG);
+  placementGroups['sk_' + legId + '_femur'] = skHipPG;
+
+  // Hip pivot — kinematic rotation
+  const hipPivot = new THREE.Group();
+  skHipPG.add(hipPivot);
+
+  // Skeleton knee placement — moves knee joint
+  const skKneePG = new THREE.Group();
+  hipPivot.add(skKneePG);
+  placementGroups['sk_' + legId + '_knee'] = skKneePG;
+
+  // Knee pivot — kinematic rotation, positioned at femur end
+  const kneePivot = new THREE.Group();
+  kneePivot.position.y = -4.5; // will be updated on STL load
+  skKneePG.add(kneePivot);
+
+  legPivots[legId] = { hip: hipPivot, knee: kneePivot, root, skHipPG, skKneePG };
+  legMeshes[legId] = { femur: null, tibia: null, foot: null, fStick: null, ftStick: null, tipSphere: null };
+}
+
+LEG_IDS.forEach(createLegGroup);
+
+// ── Load STL files ──
+const loader = new STLLoader();
+const stlDir = 'stl/';
+const stlFiles = {
+  body: 'ottoquadbigger_body.stl',
+  head: 'ottoquadbigger_head.stl',
+  hip:  'ottoquadbigger_hips.stl',
+  leg:  'ottoquadbigger_legs.stl'
+};
+
+const stlGeometries = {};
+let loadedCount = 0;
+const totalStls = Object.keys(stlFiles).length;
+
+function updateLoadProgress() {
+  loadedCount++;
+  const pct = Math.round((loadedCount / totalStls) * 100);
+  document.getElementById('loader').querySelector('.loading-text').textContent =
+    `Loading STL models... ${pct}%`;
+}
+
+function onAllLoaded() {
+  document.getElementById('loader').classList.add('done');
+  setTimeout(() => document.getElementById('loader').style.display = 'none', 400);
+  assembleRobot();
+}
+
+Object.entries(stlFiles).forEach(([key, filename]) => {
+  loader.load(stlDir + filename,
+    (geo) => {
+      stlGeometries[key] = geo;
+      updateLoadProgress();
+      if (loadedCount === totalStls) onAllLoaded();
+    },
+    undefined,
+    (err) => {
+      console.warn(`Failed to load ${filename}:`, err);
+      updateLoadProgress();
+      if (loadedCount === totalStls) onAllLoaded();
+    }
+  );
+});
+
+function analyzeStl(geo, name) {
+  geo.computeBoundingBox();
+  const bb = geo.boundingBox;
+  const sx = bb.max.x - bb.min.x;
+  const sy = bb.max.y - bb.min.y;
+  const sz = bb.max.z - bb.min.z;
+  const cx = (bb.max.x + bb.min.x) / 2;
+  const cy = (bb.max.y + bb.min.y) / 2;
+  const cz = (bb.max.z + bb.min.z) / 2;
+  const len = Math.max(sx, sy, sz);
+  let axis;
+  if (sx >= sy && sx >= sz) axis = 'X';
+  else if (sy >= sx && sy >= sz) axis = 'Y';
+  else axis = 'Z';
+  console.log(`${name}: size=(${sx.toFixed(1)},${sy.toFixed(1)},${sz.toFixed(1)}) center=(${cx.toFixed(1)},${cy.toFixed(1)},${cz.toFixed(1)}) long=${axis}(${len.toFixed(1)})`);
+  return { bb, sx, sy, sz, cx, cy, cz, len, axis };
+}
+
+// Split a geometry into two halves by largest X gap (clean split between pieces)
+function splitGeoByX(geo) {
+  const pos = geo.getAttribute('position');
+  const tris = [];
+  for (let i = 0; i < pos.count; i += 3) {
+    const cx = (pos.getX(i) + pos.getX(i+1) + pos.getX(i+2)) / 3;
+    tris.push({ idx: i, cx });
+  }
+
+  // Find largest gap between sorted triangle X centers
+  const sorted = [...tris].sort((a, b) => a.cx - b.cx);
+  let maxGap = 0, splitX = sorted[0].cx;
+  for (let i = 1; i < sorted.length; i++) {
+    const gap = sorted[i].cx - sorted[i-1].cx;
+    if (gap > maxGap) { maxGap = gap; splitX = (sorted[i].cx + sorted[i-1].cx) / 2; }
+  }
+
+  function buildGeo(indices) {
+    const verts = [];
+    for (const base of indices) {
+      for (let j = 0; j < 3; j++) {
+        verts.push(pos.getX(base + j), pos.getY(base + j), pos.getZ(base + j));
+      }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+    g.computeVertexNormals();
+    return g;
+  }
+
+  const lo = [], hi = [];
+  tris.forEach(t => { (t.cx <= splitX ? lo : hi).push(t.idx); });
+  return { lo: buildGeo(lo), hi: buildGeo(hi) };
+}
+
+function placePartAtOrigin(mesh, info, edgeX) {
+  // All STL parts: attachment surface at Z=0, part extends in +Z
+  // Rotate +90° around X: (x,y,z)→(x, -z, y) so Z=0→Y=0, part extends along -Y
+  mesh.rotation.x = Math.PI / 2;
+  // Center Y, attachment surface at Y=0. X: use edge if specified, else center
+  const px = (edgeX !== undefined) ? -edgeX : -info.cx;
+  mesh.position.set(px, 0, -info.cy);
+}
+
+function assembleRobot() {
+  const info = {};
+  ['body','head','hip','leg'].forEach(k => {
+    if (stlGeometries[k]) info[k] = analyzeStl(stlGeometries[k], k);
+  });
+
+  // ── Body ──
+  if (stlGeometries.body) {
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.35, metalness: 0.3 });
+    const bodyMesh = new THREE.Mesh(stlGeometries.body, bodyMat);
+    bodyMesh.castShadow = true; bodyMesh.receiveShadow = true;
+
+    // Body: rotX(-90°)+rotZ(90°) → (x,y,z)→(y, x, z) after rotX, simplified below
+    const bi = info.body;
+    bodyMesh.rotation.x = -Math.PI / 2;
+    bodyMesh.rotation.z = Math.PI / 2;
+    bodyMesh.position.set(bi.cy, -bi.cz, bi.cx);
+
+    const bodyPG = new THREE.Group();
+    bodyPG.add(bodyMesh);
+    robot.add(bodyPG);
+    placementGroups['body'] = bodyPG;
+
+    // Attach leg roots to body group at STL-space corners
+    const bb = bi.bb;
+    const corners = {
+      RF: { x: bb.max.x, y: bb.max.y, z: 0 },
+      RB: { x: bb.max.x, y: bb.min.y, z: 0 },
+      LF: { x: bb.min.x, y: bb.max.y, z: 0 },
+      LB: { x: bb.min.x, y: bb.min.y, z: 0 }
+    };
+    LEG_IDS.forEach(id => {
+      const c = corners[id];
+      legPivots[id].root.position.set(c.x, c.y, c.z);
+      bodyPG.add(legPivots[id].root);
+    });
+  }
+
+  // ── Head ──
+  if (stlGeometries.head) {
+    const headMat = new THREE.MeshStandardMaterial({ color: 0x445566, roughness: 0.3, metalness: 0.5 });
+    const headMesh = new THREE.Mesh(stlGeometries.head, headMat);
+    headMesh.castShadow = true; headMesh.receiveShadow = true;
+    const hi = info.head;
+    headMesh.rotation.x = -Math.PI / 2;
+    headMesh.rotation.z = Math.PI / 2;
+    headMesh.position.set(hi.cy, -hi.cz, hi.cx);
+
+    const headPG = new THREE.Group();
+    headPG.add(headMesh);
+    robot.add(headPG);
+    placementGroups['head'] = headPG;
+  }
+
+  // ── Legs ── (split hips & legs into left/right halves)
+  const hipSplit = splitGeoByX(stlGeometries.hip);
+  const legSplit = splitGeoByX(stlGeometries.leg);
+
+  const fMat = new THREE.MeshStandardMaterial({ color: 0x445566, roughness: 0.3, metalness: 0.4 });
+  const ftMat = new THREE.MeshStandardMaterial({ color: 0x3a4050, roughness: 0.4, metalness: 0.2 });
+
+  LEG_IDS.forEach(id => {
+    const p = legPivots[id];
+    const isRight = (id[0] === 'R');
+
+    // ── Femur (STL model) ──
+    const fGeo  = (isRight ? hipSplit.lo : hipSplit.hi).clone();
+    const fInfo = info.hip;
+    const femur = new THREE.Mesh(fGeo, fMat.clone());
+    femur.castShadow = true; femur.receiveShadow = true;
+    placePartAtOrigin(femur, fInfo);
+    femur.material.color.set(LEG_COLOR[id]);
+    femur.material.emissive = new THREE.Color(LEG_COLOR[id]);
+    femur.material.emissiveIntensity = 0.15;
+    const fPG = new THREE.Group();
+    fPG.add(femur);
+    p.hip.add(fPG);
+    placementGroups[id + '_femur'] = fPG;
+    legMeshes[id].femur = femur;
+    p.femurLen = fInfo.sz;
+
+    // Knee pivot position at femur end
+    p.knee.position.y = -fInfo.sz;
+
+    // ── Foot (STL model) ──
+    const ftGeo  = (isRight ? legSplit.lo : legSplit.hi).clone();
+    const ftInfo = info.leg;
+    const foot = new THREE.Mesh(ftGeo, ftMat.clone());
+    foot.castShadow = true; foot.receiveShadow = true;
+    placePartAtOrigin(foot, ftInfo, ftInfo.bb.max.x); // attach at inner edge, not center
+    foot.material.color.set(LEG_COLOR[id]);
+    foot.material.emissive = new THREE.Color(LEG_COLOR[id]);
+    foot.material.emissiveIntensity = 0.12;
+    const ftPG = new THREE.Group();
+    ftPG.add(foot);
+    p.knee.add(ftPG);
+    placementGroups[id + '_foot'] = ftPG;
+    legMeshes[id].foot = foot;
+    p.tibiaLen = ftInfo.sz;
+
+    // ── Skeleton sticks (in pivots, follow kinematics) ──
+    const stickMat = new THREE.MeshStandardMaterial({
+      color: LEG_COLOR[id], emissive: LEG_COLOR[id], emissiveIntensity: 0.7, roughness: 0.3
+    });
+    // Femur stick — in hipPivot
+    const fStick = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, p.femurLen, 6), stickMat);
+    fStick.position.y = -p.femurLen / 2;
+    fStick.userData.isSkeleton = true;
+    p.hip.add(fStick);
+    legMeshes[id].fStick = fStick;
+
+    // Knee sphere — in skKneePG (before knee rotation, marks the joint)
+    const kneeSphere = new THREE.Mesh(new THREE.SphereGeometry(2.2, 8, 8), stickMat);
+    kneeSphere.userData.isSkeleton = true;
+    p.skKneePG.add(kneeSphere);
+
+    // Foot stick — in kneePivot
+    const ftStick = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, p.tibiaLen, 6), stickMat);
+    ftStick.position.y = -p.tibiaLen / 2;
+    ftStick.userData.isSkeleton = true;
+    p.knee.add(ftStick);
+    legMeshes[id].ftStick = ftStick;
+
+    // Tip sphere — in kneePivot
+    const tipSphere = new THREE.Mesh(new THREE.SphereGeometry(1.8, 8, 8), stickMat);
+    tipSphere.position.y = -p.tibiaLen;
+    tipSphere.userData.isSkeleton = true;
+    p.knee.add(tipSphere);
+    legMeshes[id].tipSphere = tipSphere;
+  });
+
+  applyPlacements();
+  attachTxControls();
+}
+
+// ── Animation ──
+function updateJoints(mov, f0, f1, t) {
+  LEG_IDS.forEach(id => {
+    const piv = legPivots[id];
+    if (!piv) return;
+
+    const leg = mov.legs.find(l => l.id === id);
+    if (!leg) return;
+
+    const codeHip = leg.hip[f0] + (leg.hip[f1] - leg.hip[f0]) * t;
+    const codeKnee = leg.knee[f0] + (leg.knee[f1] - leg.knee[f0]) * t;
+
+    const cal = servoCal[id];
+    const hipDeg = applyCal(codeHip, cal.hipZero, cal.hipMax);
+    const kneeDeg = applyCal(codeKnee, cal.kneeZero, cal.kneeMax);
+
+    // Hip: RF and LB flipped 180° vs RB and LF
+    const flip = (id === 'RF' || id === 'LB') ? 1 : -1;
+    piv.hip.rotation.x = flip * (hipDeg - 90) * Math.PI / 180;
+
+    // Knee: LF and RF flipped vs RB and LB
+    const kneeSign = (id === 'RF' || id === 'LF') ? -1 : 1;
+    piv.knee.rotation.x = kneeSign * (180 - kneeDeg) * Math.PI / 180;
+  });
+}
+
+// ── Resize ──
+function resize() {
+  const rect = viewer.getBoundingClientRect();
+  renderer.setSize(rect.width, rect.height);
+  camera.aspect = rect.width / Math.max(rect.height, 1);
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ── Render loop ──
+function animate(ts) {
+  requestAnimationFrame(animate);
+
+  if (!lastT) lastT = ts;
+  let dt = (ts - lastT) / 1000;
+  lastT = ts;
+
+  // FPS
+  fpsCnt++; fpsSec += dt;
+  if (fpsSec >= 1) {
+    fpsVal = Math.round(fpsCnt / fpsSec);
+    document.getElementById('fps-chip').textContent = fpsVal + ' fps';
+    fpsCnt = 0; fpsSec = 0;
+  }
+
+  const mov = MOV[curMov];
+  if (mov && playing) {
+    const frameDur = (mov.delay / 1000) / speed;
+    tick += dt / frameDur;
+    while (tick >= 1) { tick -= 1; curFrame++; if (curFrame >= mov.fc) curFrame = 0; }
+  }
+
+  // Auto-cycle
+  if (autoSec > 0 && playing) {
+    autoAcc += dt;
+    if (autoAcc >= autoSec) {
+      autoAcc = 0;
+      const idx = NAMES.indexOf(curMov);
+      curMov = NAMES[(idx + 1) % NAMES.length];
+      curFrame = 0; tick = 0;
+      rebuildUI();
+    }
+  }
+
+  // Update joints
+  if (mov) {
+    const f0 = curFrame;
+    const f1 = (curFrame + 1) % mov.fc;
+    updateJoints(mov, f0, f1, tick);
+  }
+
+  controls.update();
+  trackRobot();
+  updateGridPosition();
+  updateContactPoints();
+  renderer.render(scene, camera);
+  updateLiveUI();
+}
+
+// ── UI ──
+function rebuildUI() {
+  const mov = MOV[curMov];
+  if (!mov) return;
+  document.getElementById('m-name').textContent = curMov;
+  document.getElementById('m-frames').textContent = mov.fc;
+  document.getElementById('m-delay').textContent = mov.delay + ' ms';
+  document.getElementById('m-cycle').textContent = (mov.fc * mov.delay) + ' ms (' + (mov.fc * mov.delay / 1000).toFixed(2) + 's)';
+  document.getElementById('frame-label').textContent = (curFrame + 1) + ' / ' + mov.fc;
+
+  document.querySelectorAll('.pill').forEach(b => b.classList.toggle('on', b.dataset.m === curMov));
+
+  const tl = document.getElementById('timeline');
+  tl.innerHTML = '';
+  for (let i = 0; i < mov.fc; i++) {
+    const d = document.createElement('div');
+    d.className = 'tick' + (i === curFrame ? ' hot' : '');
+    tl.appendChild(d);
+  }
+  updateLegData();
+}
+
+function updateLiveUI() {
+  const mov = MOV[curMov];
+  if (!mov) return;
+  document.getElementById('frame-label').textContent = (curFrame + 1) + ' / ' + mov.fc;
+  document.querySelectorAll('.tick').forEach((t, i) => t.classList.toggle('hot', i === curFrame));
+  updateLegData();
+}
+
+function updateLegData() {
+  const mov = MOV[curMov];
+  if (!mov) return;
+  const el = document.getElementById('leg-data');
+  el.innerHTML = mov.legs.map(l => {
+    const rk = l.knee[curFrame], rh = l.hip[curFrame];
+    const cal = servoCal[l.id];
+    const pk = applyCal(rk, cal.kneeZero, cal.kneeMax);
+    const ph = applyCal(rh, cal.hipZero, cal.hipMax);
+    const c = LEG_COLOR[l.id];
+    const showCal = cal.hipZero !== 0 || cal.hipMax !== 180 || cal.kneeZero !== 0 || cal.kneeMax !== 180;
+    return `<div class="leg-cell"><div class="leg-label" style="color:${c}">■ ${l.id}</div>
+      <div class="leg-ang">Hip: <b>${rh}°</b> Knee: <b>${rk}°</b></div>
+      ${showCal ? `<div class="leg-ang" style="color:var(--accent);">→ H: <b>${ph.toFixed(0)}°</b> K: <b>${pk.toFixed(0)}°</b></div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// Build pills
+(function () {
+  const p = document.getElementById('pills');
+  NAMES.forEach(n => {
+    const b = document.createElement('button');
+    b.className = 'pill' + (n === curMov ? ' on' : '');
+    b.dataset.m = n; b.textContent = n;
+    b.addEventListener('click', () => {
+      curMov = n; curFrame = 0; tick = 0; autoAcc = 0; rebuildUI();
+    });
+    p.appendChild(b);
+  });
+})();
+
+// Legend
+(function () {
+  document.getElementById('legend').innerHTML = LEG_IDS.map(id =>
+    `<div class="leg-cell"><div class="leg-label" style="color:${LEG_COLOR[id]}">■ ${id}</div><div class="leg-ang">Hip+Knee</div></div>`
+  ).join('');
+})();
+
+// Calibration UI
+function buildCalUI() {
+  const el = document.getElementById('cal-grid');
+  el.innerHTML = LEG_IDS.map(id => {
+    const c = servoCal[id];
+    const col = LEG_COLOR[id];
+    return `<div class="cal-servo">
+      <div class="cal-label" style="color:${col}">■ ${id}</div>
+      <div class="cal-row"><span>H</span><input type="number" id="cal-${id}-hz" value="${c.hipZero}" min="-90" max="270" step="1"> <span>–</span> <input type="number" id="cal-${id}-hm" value="${c.hipMax}" min="-90" max="270" step="1"><span>°</span></div>
+      <div class="cal-row"><span>K</span><input type="number" id="cal-${id}-kz" value="${c.kneeZero}" min="-90" max="270" step="1"> <span>–</span> <input type="number" id="cal-${id}-km" value="${c.kneeMax}" min="-90" max="270" step="1"><span>°</span></div>
+    </div>`;
+  }).join('');
+
+  LEG_IDS.forEach(id => {
+    ['hz', 'hm', 'kz', 'km'].forEach(field => {
+      const inp = document.getElementById(`cal-${id}-${field}`);
+      if (!inp) return;
+      inp.addEventListener('input', () => {
+        const v = parseInt(inp.value) || 0;
+        const key = field === 'hz' ? 'hipZero' : field === 'hm' ? 'hipMax' : field === 'kz' ? 'kneeZero' : 'kneeMax';
+        servoCal[id][key] = v;
+      });
+    });
+  });
+}
+buildCalUI();
+
+document.getElementById('cal-reset').addEventListener('click', () => {
+  servoCal = defaultCal();
+  buildCalUI();
+});
+
+// ── Placement UI ──
+let selectedPart = 'body';
+
+function buildPartSelect() {
+  const sel = document.getElementById('part-select');
+  const modelOpts = MODEL_PARTS.map(id => {
+    const label = id.replace(/_/g, ' ').replace('RF','RF ').replace('RB','RB ').replace('LF','LF ').replace('LB','LB ');
+    return `<option value="${id}" ${id===selectedPart?'selected':''}>${label}</option>`;
+  }).join('');
+  const skelOpts = SKEL_PARTS.map(id => {
+    const label = 'skel ' + id.replace('sk_','').replace(/_/g, ' ').replace('RF','RF ').replace('RB','RB ').replace('LF','LF ').replace('LB','LB ');
+    return `<option value="${id}" ${id===selectedPart?'selected':''}>${label}</option>`;
+  }).join('');
+  sel.innerHTML = `<optgroup label="Model">${modelOpts}</optgroup><optgroup label="Skeleton">${skelOpts}</optgroup>`;
+  sel.addEventListener('change', () => {
+    savePlacementValues();
+    selectedPart = sel.value;
+    loadPlacementValues();
+    attachTxControls();
+  });
+  loadPlacementValues();
+}
+
+function loadPlacementValues() {
+  const pl = placements[selectedPart] || { px:0,py:0,pz:0,rx:0,ry:0,rz:0 };
+  ['px','py','pz','rx','ry','rz'].forEach(f => {
+    const el = document.getElementById('pl-' + f);
+    if (el) el.value = pl[f];
+  });
+}
+
+function savePlacementValues() {
+  const pl = placements[selectedPart];
+  if (!pl) return;
+  ['px','py','pz'].forEach(f => {
+    const v = parseFloat(document.getElementById('pl-'+f)?.value);
+    if (!isNaN(v)) pl[f] = v;
+  });
+  ['rx','ry','rz'].forEach(f => {
+    const v = parseInt(document.getElementById('pl-'+f)?.value);
+    if (!isNaN(v)) pl[f] = v;
+  });
+  applyPlacements();
+}
+
+['px','py','pz','rx','ry','rz'].forEach(f => {
+  const el = document.getElementById('pl-' + f);
+  if (!el) return;
+  el.addEventListener('input', () => {
+    savePlacementValues();
+  });
+});
+
+document.getElementById('pl-reset').addEventListener('click', () => {
+  placements[selectedPart] = defaultPlacement()[selectedPart];
+  loadPlacementValues();
+  applyPlacements();
+});
+
+document.getElementById('pl-reset-model').addEventListener('click', () => {
+  MODEL_PARTS.forEach(k => { placements[k] = defaultPlacement()[k]; });
+  loadPlacementValues();
+  applyPlacements();
+});
+
+document.getElementById('pl-reset-skel').addEventListener('click', () => {
+  SKEL_PARTS.forEach(k => { placements[k] = defaultPlacement()[k]; });
+  loadPlacementValues();
+  applyPlacements();
+});
+
+// ── Leg Lengths ──
+const defaultLengths = () => {
+  const l = {};
+  LEG_IDS.forEach(id => {
+    const p = legPivots[id];
+    l[id] = { femur: p.femurLen || 18, tibia: p.tibiaLen || 31 };
+  });
+  return l;
+};
+let legLengths = { RF:{femur:18,tibia:31}, RB:{femur:18,tibia:31}, LF:{femur:18,tibia:31}, LB:{femur:18,tibia:31} };
+let selectedLenLeg = 'RF';
+
+function loadLenValues() {
+  const ll = legLengths[selectedLenLeg];
+  document.getElementById('len-femur').value = ll.femur;
+  document.getElementById('len-tibia').value = ll.tibia;
+}
+
+function applyLengths(id) {
+  const ll = legLengths[id];
+  const p = legPivots[id];
+  const m = legMeshes[id];
+  if (!p || !m) return;
+
+  // Update knee pivot position (femur length)
+  p.knee.position.y = -ll.femur;
+
+  // Update femur stick
+  if (m.fStick) {
+    m.fStick.geometry.dispose();
+    m.fStick.geometry = new THREE.CylinderGeometry(1.2, 1.2, ll.femur, 6);
+    m.fStick.position.y = -ll.femur / 2;
+  }
+
+  // Update foot stick
+  if (m.ftStick) {
+    m.ftStick.geometry.dispose();
+    m.ftStick.geometry = new THREE.CylinderGeometry(1.0, 1.0, ll.tibia, 6);
+    m.ftStick.position.y = -ll.tibia / 2;
+  }
+
+  // Update tip sphere
+  if (m.tipSphere) {
+    m.tipSphere.position.y = -ll.tibia;
+  }
+
+  p.femurLen = ll.femur;
+  p.tibiaLen = ll.tibia;
+}
+
+function applyAllLengths() {
+  LEG_IDS.forEach(id => applyLengths(id));
+}
+
+document.getElementById('len-leg').addEventListener('change', (e) => {
+  selectedLenLeg = e.target.value;
+  loadLenValues();
+});
+
+['len-femur','len-tibia'].forEach(f => {
+  document.getElementById(f).addEventListener('input', () => {
+    const v = parseFloat(document.getElementById(f).value) || 1;
+    legLengths[selectedLenLeg][f === 'len-femur' ? 'femur' : 'tibia'] = v;
+    applyLengths(selectedLenLeg);
+  });
+});
+
+document.getElementById('len-reset').addEventListener('click', () => {
+  legLengths = defaultLengths();
+  applyAllLengths();
+  loadLenValues();
+});
+
+// Override default lengths from STL analysis after assembly
+const origAssemble = assembleRobot;
+assembleRobot = function() {
+  origAssemble();
+  legLengths = defaultLengths();
+  loadLenValues();
+};
+
+buildPartSelect();
+
+document.getElementById('tx-translate').addEventListener('click', () => setTxMode('translate'));
+document.getElementById('tx-rotate').addEventListener('click', () => setTxMode('rotate'));
+
+// ── Config Export / Import ──
+function exportConfig() {
+  const cfg = { servoCal, placements, legLengths };
+  const blob = new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'quadruped-config.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importConfig(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const cfg = JSON.parse(reader.result);
+      if (cfg.servoCal) {
+        servoCal = cfg.servoCal;
+        buildCalUI();
+      }
+      if (cfg.placements) {
+        Object.entries(cfg.placements).forEach(([k, v]) => {
+          if (placements[k]) placements[k] = v;
+        });
+        applyPlacements();
+        loadPlacementValues();
+      }
+      if (cfg.legLengths) {
+        Object.entries(cfg.legLengths).forEach(([k, v]) => {
+          if (legLengths[k]) legLengths[k] = v;
+        });
+        applyAllLengths();
+        loadLenValues();
+      }
+    } catch (e) { alert('Invalid config file: ' + e.message); }
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById('cfg-export').addEventListener('click', exportConfig);
+document.getElementById('cfg-import').addEventListener('click', () => {
+  document.getElementById('cfg-file').click();
+});
+document.getElementById('cfg-file').addEventListener('change', (e) => {
+  if (e.target.files[0]) importConfig(e.target.files[0]);
+});
+
+// ── Skeleton toggle ──
+let showSkeleton = true;
+function applySkeletonVisibility() {
+  robot.traverse(obj => {
+    if (obj.userData && obj.userData.isSkeleton) {
+      obj.visible = showSkeleton;
+    }
+  });
+}
+document.getElementById('skel-toggle').addEventListener('change', (e) => {
+  showSkeleton = e.target.checked;
+  applySkeletonVisibility();
+});
+
+document.getElementById('grav-toggle').addEventListener('change', (e) => {
+  autoHeight = e.target.checked;
+  if (!autoHeight) robot.position.y = 0;
+});
+
+// ── Buttons ──
+document.getElementById('b-play').addEventListener('click', () => {
+  playing = !playing;
+  const b = document.getElementById('b-play');
+  b.textContent = playing ? '⏸' : '▶';
+  b.classList.toggle('go', playing);
+  if (playing) lastT = 0;
+});
+document.getElementById('b-prev').addEventListener('click', () => {
+  const mov = MOV[curMov];
+  curFrame = (curFrame - 1 + mov.fc) % mov.fc; tick = 0; autoAcc = 0; rebuildUI();
+});
+document.getElementById('b-next').addEventListener('click', () => {
+  const mov = MOV[curMov];
+  curFrame = (curFrame + 1) % mov.fc; tick = 0; autoAcc = 0; rebuildUI();
+});
+document.getElementById('speed').addEventListener('input', e => {
+  speed = parseFloat(e.target.value);
+  e.target.previousElementSibling.textContent = speed + '×';
+});
+document.getElementById('auto').addEventListener('change', e => {
+  autoSec = parseInt(e.target.value); autoAcc = 0;
+});
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return; // don't capture when typing in calibration
+  switch (e.key) {
+    case ' ': e.preventDefault(); document.getElementById('b-play').click(); break;
+    case 'ArrowLeft': document.getElementById('b-prev').click(); break;
+    case 'ArrowRight': document.getElementById('b-next').click(); break;
+    case 'ArrowUp': e.preventDefault(); speed = Math.min(3, speed + 0.25); updateSpeedUI(); break;
+    case 'ArrowDown': e.preventDefault(); speed = Math.max(0.25, speed - 0.25); updateSpeedUI(); break;
+    case '1': curMov = 'Forward'; switchMov(); break;
+    case '2': curMov = 'Backward'; switchMov(); break;
+    case '3': curMov = 'RotateRight'; switchMov(); break;
+    case '4': curMov = 'RotateLeft'; switchMov(); break;
+    case '5': curMov = 'Squat'; switchMov(); break;
+    case '6': curMov = 'Wiggle'; switchMov(); break;
+  }
+});
+function switchMov() { curFrame = 0; tick = 0; autoAcc = 0; rebuildUI(); }
+function updateSpeedUI() {
+  const s = document.getElementById('speed');
+  s.value = speed;
+  s.previousElementSibling.textContent = speed + '×';
+}
+
+// ── Start ──
+rebuildUI();
+document.getElementById('b-play').textContent = '⏸';
+document.getElementById('b-play').classList.add('go');
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

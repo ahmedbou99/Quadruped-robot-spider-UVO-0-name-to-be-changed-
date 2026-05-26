@@ -1,0 +1,192 @@
+{
+  "servoCal": {
+    "RF": {
+      "hipZero": 0,
+      "hipMax": 180,
+      "kneeZero": 0,
+      "kneeMax": 180
+    },
+    "RB": {
+      "hipZero": 0,
+      "hipMax": 180,
+      "kneeZero": 180,
+      "kneeMax": 360
+    },
+    "LF": {
+      "hipZero": 0,
+      "hipMax": 180,
+      "kneeZero": 0,
+      "kneeMax": 180
+    },
+    "LB": {
+      "hipZero": 0,
+      "hipMax": 180,
+      "kneeZero": 180,
+      "kneeMax": 360
+    }
+  },
+  "placements": {
+    "body": {
+      "px": 0,
+      "py": 50,
+      "pz": 0,
+      "rx": 0,
+      "ry": 0,
+      "rz": 0
+    },
+    "head": {
+      "px": 0,
+      "py": 75,
+      "pz": 0,
+      "rx": 180,
+      "ry": 180,
+      "rz": 0
+    },
+    "RF_femur": {
+      "px": 29.3,
+      "py": -17.4,
+      "pz": 7.8,
+      "rx": 90,
+      "ry": 0,
+      "rz": 0
+    },
+    "RF_foot": {
+      "px": 57.3,
+      "py": -12,
+      "pz": -14.5,
+      "rx": -65,
+      "ry": 0,
+      "rz": 0
+    },
+    "RB_femur": {
+      "px": -29.2,
+      "py": -16.1,
+      "pz": -9.2,
+      "rx": 90,
+      "ry": 0,
+      "rz": 180
+    },
+    "RB_foot": {
+      "px": 57.7,
+      "py": -12.9,
+      "pz": -14.3,
+      "rx": -67,
+      "ry": 0,
+      "rz": 0
+    },
+    "LF_femur": {
+      "px": -27.7,
+      "py": -18.4,
+      "pz": 8.9,
+      "rx": 90,
+      "ry": 0,
+      "rz": 0
+    },
+    "LF_foot": {
+      "px": 24.1,
+      "py": -12.8,
+      "pz": -13.5,
+      "rx": -65,
+      "ry": 0,
+      "rz": 0
+    },
+    "LB_femur": {
+      "px": 31.4,
+      "py": -20.8,
+      "pz": -5.6,
+      "rx": 90,
+      "ry": 0,
+      "rz": 180
+    },
+    "LB_foot": {
+      "px": 25.2,
+      "py": -14.9,
+      "pz": -16.8,
+      "rx": -67,
+      "ry": 0,
+      "rz": 0
+    },
+    "sk_RF_femur": {
+      "px": 111.2,
+      "py": -74.4,
+      "pz": -144.8,
+      "rx": -180,
+      "ry": 45,
+      "rz": -90
+    },
+    "sk_RF_knee": {
+      "px": 0,
+      "py": 0,
+      "pz": 0,
+      "rx": 0,
+      "ry": -90,
+      "rz": 0
+    },
+    "sk_RB_femur": {
+      "px": 108.1,
+      "py": 26.9,
+      "pz": 149.3,
+      "rx": 0,
+      "ry": 45,
+      "rz": -90
+    },
+    "sk_RB_knee": {
+      "px": 0,
+      "py": 0,
+      "pz": 0,
+      "rx": 0,
+      "ry": 90,
+      "rz": 0
+    },
+    "sk_LF_femur": {
+      "px": -145.4,
+      "py": -71.3,
+      "pz": -109.3,
+      "rx": 0,
+      "ry": 45,
+      "rz": -90
+    },
+    "sk_LF_knee": {
+      "px": 0,
+      "py": 0,
+      "pz": 0,
+      "rx": 0,
+      "ry": 90,
+      "rz": 0
+    },
+    "sk_LB_femur": {
+      "px": -149.7,
+      "py": 26.2,
+      "pz": 107.1,
+      "rx": 180,
+      "ry": 45,
+      "rz": -90
+    },
+    "sk_LB_knee": {
+      "px": 0,
+      "py": 0,
+      "pz": 0,
+      "rx": 0,
+      "ry": -90,
+      "rz": 0
+    }
+  },
+  "legLengths": {
+    "RF": {
+      "femur": 35,
+      "tibia": 47
+    },
+    "RB": {
+      "femur": 35,
+      "tibia": 47
+    },
+    "LF": {
+      "femur": 35,
+      "tibia": 47
+    },
+    "LB": {
+      "femur": 35,
+      "tibia": 47
+    }
+  }
+}
