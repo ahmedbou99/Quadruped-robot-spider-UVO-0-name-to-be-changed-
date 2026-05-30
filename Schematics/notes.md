@@ -1,4 +1,5 @@
 -The Electrical Schematic was made with Tinkercad
+
 -The sequence graph of forward motion was found in [this research paper](https://ijsrset.com/IJSRSET219146) , i added my "definiton of up and forward" to it using angles
 
 -The printed model used for this project was an Otto model published in [Printables](https://www.printables.com/model/167324-otto-diy-quadruped-robot/files)
