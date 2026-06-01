@@ -81,9 +81,10 @@ enum {
 #define CAM_PIN_HREF    23
 #define CAM_PIN_PCLK    22
 
-// Serial2 pins to Arduino (free GPIOs on ESP32-CAM)
-#define ARDUINO_RX  14   // ESP32-CAM GPIO14 (TX2) → Arduino pin 0
-#define ARDUINO_TX  15   // ESP32-CAM GPIO15 (RX2) → Arduino pin 1
+// Serial2 pins to Arduino
+// RX2=14 receives from Arduino TX, TX2=13 sends to Arduino RX
+#define ARDUINO_RX  14   // ESP32-CAM GPIO14 ← Arduino pin 1 (TX)
+#define ARDUINO_TX  13   // ESP32-CAM GPIO13 → Arduino pin 0 (RX)
 
 // ───────────────────────────────────
 //  CAMERA SETTINGS
