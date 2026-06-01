@@ -2,21 +2,10 @@
 
 Spider spider;
 
-void blink(byte n) {
-  for (byte i = 0; i < n; i++) {
-    digitalWrite(LED_BUILTIN, LOW); delay(100);
-    digitalWrite(LED_BUILTIN, HIGH); delay(100);
-  }
-  delay(400);
-}
-
 void setup() {
-  pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, HIGH);
   Serial.begin(9600);
   spider.setup();
   spider.rest();
-  digitalWrite(LED_BUILTIN, LOW);  // LED off = ready
 }
 
 void loop() {
@@ -29,12 +18,10 @@ void loop() {
     if (line[0] == 'S') {
       int spd = line.substring(1).toInt();
       spider.setSpeed(spd);
-      blink(1);  // 1 blink = speed
       return;
     }
 
     int mv = line.toInt();
-    blink(mv == 0 ? 1 : mv + 1);  // 1 blink=rest, 2=forward, 3=backward, etc.
 
     switch (mv) {
       case 1: spider.moveForward(); break;
