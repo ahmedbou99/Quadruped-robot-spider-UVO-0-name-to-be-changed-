@@ -88,8 +88,8 @@ enum {
 // ───────────────────────────────────
 //  CAMERA SETTINGS
 // ───────────────────────────────────
-#define CAM_FRAME_INTERVAL 250   // ms between frames (~4 fps)
-#define CAM_JPEG_QUALITY   12    // 0-63, lower = better quality
+#define CAM_FRAME_INTERVAL 500   // ms between frames (~2 fps)
+#define CAM_JPEG_QUALITY   30    // 0-63, lower=better (30 = smaller files)
 
 // ───────────────────────────────────
 //  TLS (uncomment for port 8883)
@@ -168,7 +168,7 @@ void setup() {
 #endif
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
   mqtt.setCallback(mqttCallback);
-  mqtt.setBufferSize(8192);  // need room for base64 frames
+  mqtt.setBufferSize(16384);  // need room for base64 camera frames
   connectMQTT();
 
   // ── Serial2 to Arduino ──
@@ -265,7 +265,7 @@ bool initCamera() {
   config.pin_reset    = CAM_PIN_RESET;
   config.xclk_freq_hz = 20000000;
   config.pixel_format  = PIXFORMAT_JPEG;
-  config.frame_size    = FRAMESIZE_QVGA;   // 320×240
+  config.frame_size    = FRAMESIZE_QQVGA;  // 160×120 (smaller frames = no stack overflow)
   config.jpeg_quality  = CAM_JPEG_QUALITY;
   config.fb_count      = 1;
 
@@ -295,31 +295,34 @@ bool initCamera() {
 // ───────────────────────────────────
 //  CAMERA CAPTURE + PUBLISH
 // ───────────────────────────────────
+// Static buffer for camera publish — avoids stack overflow
+static char camPayload[16384];
+
 void captureAndPublish() {
   if (!mqtt.connected()) return;
 
   fb = esp_camera_fb_get();
-  if (!fb) {
-    Serial.println("Camera: frame capture failed");
+  if (!fb) return;
+
+  // Only publish if frame is small enough to fit in our buffer after base64
+  size_t b64Len = (fb->len + 2) / 3 * 4;
+  if (b64Len > 12000) {
+    // Frame too large — skip this one
+    esp_camera_fb_return(fb);
     return;
   }
 
-  // Base64-encode the JPEG buffer
   String b64 = base64Encode(fb->buf, fb->len);
-
-  // Build JSON payload
-  JsonDocument doc;
-  doc["frame"]     = b64;
-  doc["timestamp"] = (unsigned long)(millis() / 1000);
-
-  char payload[8192];
-  int n = serializeJson(doc, payload);
   esp_camera_fb_return(fb);
 
-  if (n > 0 && mqtt.publish(TP_CAM, (uint8_t*)payload, n, false)) {
-    Serial.printf("Camera: published %d bytes (b64 frame)\n", n);
-  } else {
-    Serial.println("Camera: publish failed (frame too large?)");
+  // Manual JSON to avoid JsonDocument stack overhead
+  int n = snprintf(camPayload, sizeof(camPayload),
+    "{\"frame\":\"%s\",\"timestamp\":%lu}",
+    b64.c_str(),
+    (unsigned long)(millis() / 1000));
+
+  if (n > 0 && n < (int)sizeof(camPayload) && mqtt.publish(TP_CAM, (uint8_t*)camPayload, n, false)) {
+    Serial.printf("Cam: %d bytes\n", n);
   }
 }
 
