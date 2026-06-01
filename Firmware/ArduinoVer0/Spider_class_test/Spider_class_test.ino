@@ -5,7 +5,7 @@ void setup() {
 Serial.begin(9600);
 spider.setup();
 spider.rest();
-  
+ pinMode(LED_BUILTIN, OUTPUT);
   
   
 
@@ -14,6 +14,7 @@ spider.rest();
 
 void loop() {
   if (Serial.available() > 0) {
+	digitalWrite(LED_BUILTIN, HIGH);
     String line = Serial.readStringUntil('\n');
     line.trim();
     if (line.length() == 0) return;
