@@ -5,8 +5,9 @@ Spider spider;
 SoftwareSerial softSerial(2, 3);  // RX=pin2 ← ESP32 TX, TX=pin3 (unused)
 
 void setup() {
-  Serial.begin(9600);         // USB debug
-  softSerial.begin(9600);     // ESP32 data
+  Serial.begin(9600);
+  softSerial.begin(9600);
+  pinMode(2, INPUT_PULLUP);   // prevent floating pin noise
   spider.setup();
   spider.rest();
   Serial.println("Arduino ready");
@@ -17,6 +18,7 @@ void loop() {
     String line = softSerial.readStringUntil('\n');
     line.trim();
     if (line.length() == 0) return;
+    if (line[0] != 'S' && !isdigit(line[0])) return;  // ignore garbage
 
     Serial.print("RX: ");
     Serial.println(line);
