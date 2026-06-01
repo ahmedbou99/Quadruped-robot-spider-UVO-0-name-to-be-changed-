@@ -154,10 +154,10 @@ void setup() {
   delay(500);
   Serial.println("\n=== ESP32-CAM Spider Bridge ===");
 
-  // ── Camera init ──
-  if (!initCamera()) {
-    Serial.println("Camera failed — running bridge only.");
-  }
+  // ── Camera init (disabled for now — uncomment after bridge works)
+  // if (!initCamera()) {
+  //   Serial.println("Camera failed — running bridge only.");
+  // }
 
   // ── WiFi ──
   connectWiFi();
@@ -168,7 +168,7 @@ void setup() {
 #endif
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
   mqtt.setCallback(mqttCallback);
-  mqtt.setBufferSize(16384);  // need room for base64 camera frames
+  mqtt.setBufferSize(2048);   // enough for command payloads
   connectMQTT();
 
   // ── Serial2 to Arduino ──
@@ -193,11 +193,11 @@ void loop() {
   }
   mqtt.loop();
 
-  // Camera capture on interval
-  if (millis() - lastFrame > CAM_FRAME_INTERVAL) {
-    lastFrame = millis();
-    captureAndPublish();
-  }
+  // Camera capture (disabled — uncomment after bridge confirmed working)
+  // if (millis() - lastFrame > CAM_FRAME_INTERVAL) {
+  //   lastFrame = millis();
+  //   captureAndPublish();
+  // }
 }
 
 // ───────────────────────────────────
@@ -295,35 +295,11 @@ bool initCamera() {
 // ───────────────────────────────────
 //  CAMERA CAPTURE + PUBLISH
 // ───────────────────────────────────
-// Static buffer for camera publish — avoids stack overflow
-static char camPayload[16384];
+// Static buffer for camera publish (unused while camera disabled)
+// static char camPayload[8192];
 
 void captureAndPublish() {
-  if (!mqtt.connected()) return;
-
-  fb = esp_camera_fb_get();
-  if (!fb) return;
-
-  // Only publish if frame is small enough to fit in our buffer after base64
-  size_t b64Len = (fb->len + 2) / 3 * 4;
-  if (b64Len > 12000) {
-    // Frame too large — skip this one
-    esp_camera_fb_return(fb);
-    return;
-  }
-
-  String b64 = base64Encode(fb->buf, fb->len);
-  esp_camera_fb_return(fb);
-
-  // Manual JSON to avoid JsonDocument stack overhead
-  int n = snprintf(camPayload, sizeof(camPayload),
-    "{\"frame\":\"%s\",\"timestamp\":%lu}",
-    b64.c_str(),
-    (unsigned long)(millis() / 1000));
-
-  if (n > 0 && n < (int)sizeof(camPayload) && mqtt.publish(TP_CAM, (uint8_t*)camPayload, n, false)) {
-    Serial.printf("Cam: %d bytes\n", n);
-  }
+  // Camera disabled for now — add back after bridge is stable
 }
 
 // ───────────────────────────────────
