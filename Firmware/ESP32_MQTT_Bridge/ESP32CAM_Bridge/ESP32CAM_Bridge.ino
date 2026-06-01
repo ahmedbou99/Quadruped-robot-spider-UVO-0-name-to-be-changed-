@@ -154,10 +154,10 @@ void setup() {
   delay(500);
   Serial.println("\n=== ESP32-CAM Spider Bridge ===");
 
-  // ── Camera init (disabled for now — uncomment after bridge works)
-  // if (!initCamera()) {
-  //   Serial.println("Camera failed — running bridge only.");
-  // }
+  // ── Camera init ──
+  if (!initCamera()) {
+    Serial.println("Camera failed — running bridge only.");
+  }
 
   // ── WiFi ──
   connectWiFi();
@@ -168,7 +168,7 @@ void setup() {
 #endif
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
   mqtt.setCallback(mqttCallback);
-  mqtt.setBufferSize(2048);   // enough for command payloads
+  mqtt.setBufferSize(12288);  // enough for camera frames
   connectMQTT();
 
   // ── Serial2 to Arduino ──
@@ -193,11 +193,11 @@ void loop() {
   }
   mqtt.loop();
 
-  // Camera capture (disabled — uncomment after bridge confirmed working)
-  // if (millis() - lastFrame > CAM_FRAME_INTERVAL) {
-  //   lastFrame = millis();
-  //   captureAndPublish();
-  // }
+  // Camera capture
+  if (millis() - lastFrame > CAM_FRAME_INTERVAL) {
+    lastFrame = millis();
+    captureAndPublish();
+  }
 }
 
 // ───────────────────────────────────
@@ -295,11 +295,54 @@ bool initCamera() {
 // ───────────────────────────────────
 //  CAMERA CAPTURE + PUBLISH
 // ───────────────────────────────────
-// Static buffer for camera publish (unused while camera disabled)
-// static char camPayload[8192];
+// Static buffer for camera JSON payload (12KB, in BSS not stack)
+static char camBuf[12288];
 
 void captureAndPublish() {
-  // Camera disabled for now — add back after bridge is stable
+  if (!mqtt.connected()) return;
+
+  camera_fb_t* fb = esp_camera_fb_get();
+  if (!fb || fb->len == 0) {
+    if (fb) esp_camera_fb_return(fb);
+    return;
+  }
+
+  // Calculate sizes
+  size_t b64Max = (fb->len + 2) / 3 * 4;  // worst-case base64 size
+  size_t jsonHead = 40;                     // {"frame":"
+  size_t jsonTail = 30;                     // ","timestamp":1234567890}
+  size_t total = jsonHead + b64Max + jsonTail;
+
+  if (total >= sizeof(camBuf)) {
+    // Frame too large, skip
+    esp_camera_fb_return(fb);
+    return;
+  }
+
+  // Write JSON header
+  int pos = snprintf(camBuf, sizeof(camBuf), "{\"frame\":\"");
+
+  // Base64-encode JPEG directly into camBuf
+  for (size_t i = 0; i < fb->len; i += 3) {
+    uint32_t triple = (uint32_t)fb->buf[i] << 16;
+    if (i + 1 < fb->len) triple |= (uint32_t)fb->buf[i + 1] << 8;
+    if (i + 2 < fb->len) triple |= fb->buf[i + 2];
+    camBuf[pos++] = b64table[(triple >> 18) & 0x3F];
+    camBuf[pos++] = b64table[(triple >> 12) & 0x3F];
+    camBuf[pos++] = (i + 1 < fb->len) ? b64table[(triple >> 6) & 0x3F] : '=';
+    camBuf[pos++] = (i + 2 < fb->len) ? b64table[triple & 0x3F] : '=';
+  }
+
+  // Write JSON tail
+  pos += snprintf(camBuf + pos, sizeof(camBuf) - pos,
+    "\",\"timestamp\":%lu}", (unsigned long)(millis() / 1000));
+
+  esp_camera_fb_return(fb);
+
+  // Publish
+  if (mqtt.publish(TP_CAM, (uint8_t*)camBuf, pos, false)) {
+    Serial.printf("Cam: %d bytes\n", pos);
+  }
 }
 
 // ───────────────────────────────────
