@@ -34,10 +34,14 @@ public:
   // Execute a movement pattern
   void executeMovement(Movement& movement, int iterations = 1);
   
+  // Speed control (0-100, stored as percentage)
+  int speedPercent = 50;
+  void setSpeed(int pct);
+
   // Direct leg control
   void setLegPosition(int legIndex, int hipAngle, int kneeAngle);
   void setAllLegsPosition(int hipAngle[], int kneeAngle[]);
-  
+
   // Utility
   void rest();
   
