@@ -1,6 +1,8 @@
 import { useState, useEffect,useRef } from 'react'
 import mqtt from 'mqtt'
 import './index.css'
+import robotGreen from './assets/Robot_icon_green.png'
+import robotRed   from './assets/Robot_icon_red.png'
 import { ArrowNavButton } from './components/Arrow-Nav-buttons';
 import { ArrowUp, ArrowDown, RotateCcw, RotateCw, Camera } from 'lucide-react';
 import { MovButton } from './components/Movement-buttons';
@@ -8,8 +10,7 @@ import { RotateNavButton } from './components/Rotate-Nav-Button';
 import { SpeedSlider } from './components/Speed_Slider';
 
 // MQTT CONFIG
-const BROKER_URL  = 'ws://mqtt.local:9002';         // plain WebSocket for local dev
-const BROKER_URL_TLS = 'wss://mqtt.local:9001';    // WebSocket + TLS for production
+const BROKER_URL  = 'wss://mqtt.local:9001';        // WebSocket TLS
 const MQTT_OPTS = {
   username : 'dashboard',                            // dashboard user
   password : 'dash123',
@@ -35,9 +36,9 @@ const QOS_STATUS = 1;   // LWT / status
 
 
 
-// Broker Connection Modal 
+// Broker Connection Modal
 const BrokerModal = ({ onCancel, onConnect }) => {
-  const [form, setForm] = useState({ host: 'mqtt.local', port: '9002', clientId: 'dashboard', password: 'dash123' });
+  const [form, setForm] = useState({ host: 'mqtt.local', port: '9001', clientId: 'dashboard', password: 'dash123' });
   const [errors, setErrors] = useState({ host: '', port: '', clientId: '', password: '' });
   const [authError, setAuthError] = useState('');
 
@@ -53,7 +54,8 @@ const BrokerModal = ({ onCancel, onConnect }) => {
     if (!form.host.trim())   { newErrors.host     = 'Broker IP / Host is required.'; valid = false; }
     if (!form.port.trim())   { newErrors.port     = 'Port is required.';             valid = false; }
     else if (!/^\d+$/.test(form.port.trim())) { newErrors.port = 'Port must be a number.'; valid = false; }
-    if (!form.password.trim() && form.clientId.trim()) { newErrors.password = 'Password required when username is set.'; valid = false; }
+    if (!form.clientId.trim()) { newErrors.clientId = 'Username is required.';       valid = false; }
+    if (!form.password.trim()) { newErrors.password = 'Password is required. Leave blank only if the broker is anonymous.'; valid = false; }
     setErrors(newErrors);
     if (!valid) return;
     onConnect(form, setAuthError);
@@ -75,12 +77,12 @@ const BrokerModal = ({ onCancel, onConnect }) => {
 
   const labelCls = 'text-[#627084] text-[9px] uppercase tracking-[3px] mb-1';
 
-  const ErrorMsg = ({ field }) =>
+  const errorMsg = ( field ) =>
     errors[field] ? <p className='text-[#DB2424] text-[9px] mt-1 tracking-wide'>{errors[field]}</p> : null;
 
   return (
-    <div 
-      className='fixed inset-0 z-50 flex items-center justify-center bg-black/5 backdrop-blur-xs' 
+    <div
+      className='fixed inset-0 z-50 flex items-center justify-center bg-black/5 backdrop-blur-xs'
       onClick={onCancel}
       onKeyDown={handleKeyDown}
       >
@@ -94,10 +96,10 @@ const BrokerModal = ({ onCancel, onConnect }) => {
         )}
 
         <div className='flex flex-col gap-3'>
-          <div><div className={labelCls}>Broker IP / Host</div><input className={inputCls('host')} value={form.host} onChange={set('host')} placeholder='localhost' /><ErrorMsg field='host' /></div>
-          <div><div className={labelCls}>Port (Websocket)</div><input className={inputCls('port')} value={form.port} onChange={set('port')} placeholder='9801' /><ErrorMsg field='port' /></div>
-          <div><div className={labelCls}>Username</div><input className={inputCls('clientId')} value={form.clientId} onChange={set('clientId')} placeholder='dashboard' /><ErrorMsg field='clientId' /></div>
-          <div><div className={labelCls}>Password</div><input className={inputCls('password')} type='password' value={form.password} onChange={set('password')} placeholder='leave empty if anonymous' /><ErrorMsg field='password' /></div>
+          <div><div className={labelCls}>Broker IP / Host</div><input className={inputCls('host')} value={form.host} onChange={set('host')} placeholder='localhost' />{errorMsg('host')}</div>
+          <div><div className={labelCls}>Port (Websocket)</div><input className={inputCls('port')} value={form.port} onChange={set('port')} placeholder='9801' />{errorMsg ('port')}</div>
+          <div><div className={labelCls}>Username</div><input className={inputCls('clientId')} value={form.clientId} onChange={set('clientId')} placeholder='dashboard' />{errorMsg('clientId')}</div>
+          <div><div className={labelCls}>Password</div><input className={inputCls('password')} type='password' value={form.password} onChange={set('password')} placeholder='leave empty if anonymous' />{errorMsg('password')}</div>
         </div>
 
         <div className='flex gap-3 pt-1'>
@@ -109,7 +111,7 @@ const BrokerModal = ({ onCancel, onConnect }) => {
   );
 };
 
-// Disconnect Confirmation Modal 
+// Disconnect Confirmation Modal
 const DisconnectModal = ({ onCancel, onConfirm }) => (
   <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/5 backdrop-blur-xs' onClick={onCancel}>
     <div className='w-90 bg-[#0f1729] border-[1.5px] border-[#DB2424]/60 rounded-xl p-6 flex flex-col gap-5 shadow-[0_0_15px_#DB242470] font-["Orbitron"]' onClick={e => e.stopPropagation()}>
@@ -122,6 +124,8 @@ const DisconnectModal = ({ onCancel, onConfirm }) => (
     </div>
   </div>
 );
+
+
 
 
 
@@ -152,7 +156,13 @@ function App() {
     };
   }, []);
 
-  // Publish direction on arrow key press 
+  // MQTT helpers
+  const publish = (topic, payload, qos = QOS_CMD) => {
+    if (!mqttClientRef.current) return;
+    mqttClientRef.current.publish(topic, JSON.stringify(payload), { qos });
+  };
+
+  // Publish direction on arrow key press
   useEffect(() => {
     if (!connected || !mqttClientRef.current) return;
     const dirMap = {
@@ -165,16 +175,10 @@ function App() {
     if (dir) {
       publish(TOPICS.CMD_DIRECTION, { direction: dir }, QOS_CMD);
     } else if (activeKey === null) {
-      // key released → send stop
+      // key released => send stop
       publish(TOPICS.CMD_DIRECTION, { direction: 'stop' }, QOS_CMD);
     }
   }, [activeKey, connected]);
-
-  // MQTT helpers 
-  const publish = (topic, payload, qos = QOS_CMD) => {
-    if (!mqttClientRef.current) return;
-    mqttClientRef.current.publish(topic, JSON.stringify(payload), { qos });
-  };
 
   const handleHeaderButton = () => {
     if (connected) setShowDisconnectModal(true);
@@ -182,14 +186,11 @@ function App() {
   };
 
   const handleModalConnect = (form, setAuthError) => {
-    const tlsPorts = ['9001', '8883', '8081', '443'];
-    const protocol = tlsPorts.includes(form.port) ? 'wss' : 'ws';
-    const path = form.host === 'broker.emqx.io' ? '/mqtt' : '';
-    const url  = `${protocol}://${form.host}:${form.port}${path}`;
+    const url  = `wss://${form.host}:${form.port}`;
     const opts = {
       ...MQTT_OPTS,
-      username : form.clientId.trim() || undefined,
-      password : form.password.trim() || undefined,
+      username : form.clientId,
+      password : form.password,
     };
 
     const client = mqtt.connect(url, opts);
@@ -224,13 +225,27 @@ function App() {
     // Auth / connection error handling
     client.on('error', (err) => {
       console.error('MQTT error:', err);
-      if (err.message?.includes('Not authorized') || err.message?.includes('Bad username')) {
+      if (err.message?.includes('Not authorized') || err.message?.includes('Bad username') || err.message?.includes('bad user name or password')) {
         setAuthError('Incorrect credentials. Please check username and password.');
       } else {
         setAuthError(`Connection failed: ${err.message}`);
       }
       client.end(true);
     });
+
+    client.on('disconnect', (packet) => {
+      const code = packet?.reasonCode;
+      if (code === 134 || code === 135) {
+        setAuthError('Wrong username or password. Please try again.');
+        client.end(true);
+      }
+    });
+
+    client.on('close', () => {
+    setConnected(false);
+    setCamFrame(null);
+    mqttClientRef.current = null;
+  });
   };
 
   const handleConfirmDisconnect = () => {
@@ -244,25 +259,23 @@ function App() {
     //setRobotOnline(false);
   };
 
-  // Movement buttons — map label → direction value sent over MQTT
-  const MOVEMENT_MAP = {
-    'FORWARD':  'forward',
-    'BACKWARD': 'backward',
-    'ROTATE L': 'left',
-    'ROTATE R': 'right',
-    'SQUAT':    'squat',
-    'WIGGLE':   'wiggle',
+  // Gait publish
+  const GAIT_MAP = {
+    WALK   : 'tripod',
+    WIGGLE : 'wave',
+    CRAWL  : 'crawl',
+    STAND  : 'ripple',
   };
 
-  const handleMove = (label) => {
+  const handleGait = (label) => {
     if (!connected) return;
-    const dir = MOVEMENT_MAP[label];
+    const gait = GAIT_MAP[label];
     setActiveGait(label);
-    publish(TOPICS.CMD_DIRECTION, { direction: dir }, QOS_CMD);
+    publish(TOPICS.CMD_GAIT, { gait }, QOS_CMD);
     setTimeout(() => setActiveGait(null), 150);
   };
 
-  // Speed publish 
+  // Speed publish
   const handleSpeed = (val) => {
     setSpeed(val);
     if (!connected) return;
@@ -284,6 +297,11 @@ function App() {
   const titleCls = connected ? 'text-[#33CCCC]' : 'text-[#33CCCC]';
   const iconCls = connected ? 'stroke-[#0F1C2D] group-hover:stroke-[#0F1729]' : 'stroke-[#627084]';
 
+  const handleDirection = (dir) => {
+    if (!connected) return;
+    publish(TOPICS.CMD_DIRECTION, { direction: dir }, QOS_CMD);
+  };
+
   return (
     <>
       <div className='h-full bg-[#0f1729] font-["Orbitron"] overflow-hidden'>
@@ -298,7 +316,7 @@ function App() {
 
             {/* Robot icon box*/}
             <div className={`flex items-center justify-center h-10 w-10 bg-[#1b282f] rounded-md border-[1.5px] border-[#0284C5]/30 ${connected ? 'shadow-[0_0_10px_#2BA77080,0_0_20px_#2BA77040]' : 'shadow-[0_0_10px_#E5282880,0_0_20px_#E5282840]'}`}>
-              <img src={connected ? '/Robot_icon_green.png' : '/Robot_icon_red.png'} className='w-5 h-5 object-contain' alt='robot' />
+              <img src={connected ? robotGreen : robotRed} className='w-5 h-5 object-contain' alt='robot' />
             </div>
 
             {/* QUADBOT title */}
@@ -312,16 +330,8 @@ function App() {
                 <div className='text-[8px] font-space'>
                   {connected ? 'connected' : 'disconnected'}
                 </div>
-                <span className={`w-1 h-1 rounded-full ${connected ? 'bg-[#2BA770]' : 'bg-[#AE070A]'}`}></span> 
+                <span className={`w-1 h-1 rounded-full ${connected ? 'bg-[#2BA770]' : 'bg-[#AE070A]'}`}></span>
               </div>
-
-              {/* robot online/offline dot from LWT status 
-              {connected && (
-                <div className={`text-[9px] uppercase tracking-[2px] flex gap-1.5 ${robotOnline ? 'text-[#2BA770]' : 'text-[#DB2424]'}`}>
-                  <span className={`w-1 h-1 rounded-full ${robotOnline ? 'bg-[#2BA770]' : 'bg-[#DB2424]'}`}></span>
-                  {robotOnline ? 'Robot Online' : 'Robot Offline'}
-                </div>
-              )} */}
 
             </div>
           </div>
@@ -355,28 +365,27 @@ function App() {
                   {/* Row 1 — Up */}
                   <div />
                   <ArrowNavButton
-                    onClick={() => { if (connected) publish(TOPICS.CMD_DIRECTION, { direction: 'forward' }, QOS_CMD); }}
-                    className={`transition-all duration-75 ${isActive('ArrowUp') ? 'scale-95 bg-[#3CE89B] shadow-[0_0_9.6px_#3CE89B40,0_0_5px_#3CE89B40] bg-linear-to-r from-[#3CE89B] to-[#228257] transition-all' : ''} ${connected ? 'border-[#C8D3DF] bg-[#324052]/50 cursor-pointer hover:bg-[#3CE89B] hover:border-0 hover:shadow-[0_0_9.6px_#3CE89B40,0_0_5px_#3CE89B40] hover:bg-linear-to-r hover:from-[#3CE89B] hover:to-[#228257] transition-all' : 'border-[#2A3646] bg-[#0F1C2D]'} `}>
+                    onClick={() => handleDirection('forward')}
+                    className={`transition-all duration-75 ${isActive('ArrowUp') ? 'scale-95 bg-[#3CE89B] shadow-[0_0_9.6px_#3CE89B40,0_0_5px_#3CE89B40] bg-linear-to-r from-[#3CE89B] to-[#228257] transition-all' : ''} ${connected ? 'border-[#C8D3DF] bg-[#324052]/50 cursor-pointer hover:bg-[#3CE89B] hover:border-0 hover:shadow-[0_0_9.6px_#3CE89B40,0_0_5px_#3CE89B40] hover:bg-linear-to-r hover:from-[#3CE89B] hover:to-[#228257] transition-all' : 'border-[#2A3646] bg-[#0F1C2D]'} `}
+                  >
                     <ArrowUp className={`w-4.5 h-4.5 stroke-2 transition-colors ${isActive('ArrowUp') ? 'stroke-[#0F1729]' : iconCls} `} />
                   </ArrowNavButton>
                   <div />
 
                   {/* Row 2 — Rotate left / center dot / Rotate right */}
                   <RotateNavButton
-                    onClick={() => handleRotate(-90)}
+                    onClick={() => handleRotate(0)}
                     className={`transition-all duration-75 ${isActive('ArrowLeft') ? 'scale-95 bg-[#3CE89B] shadow-[0_0_9.6px_#3CE89B40,0_0_5px_#3CE89B40] bg-linear-to-r from-[#3CE89B] to-[#228257]' : ''} ${connected ? 'border-[#C8D3DF] bg-[#324052]/50 cursor-pointer hover:bg-[#3CE89B] hover:border-0 hover:shadow-[0_0_9.6px_#3CE89B40,0_0_5px_#3CE89B40] hover:bg-linear-to-r hover:from-[#3CE89B] hover:to-[#228257] transition-all' : 'border-[#2A3646] bg-[#0F1C2D]'}`}>
                     <RotateCcw className={`w-4.5 h-4.5 stroke-2 transition-colors ${isActive('ArrowLeft') ? 'stroke-[#0F1729]' : iconCls}`} />
                   </RotateNavButton>
 
                   {/* Center dot button */}
-                  <button
-                    onClick={() => { if (connected) publish(TOPICS.CMD_DIRECTION, { direction: 'stop' }, QOS_CMD); }}
-                    className={`border-[1.5px] flex items-center justify-center rounded-lg w-12.5 h-12.5 ${connected ? 'border-[#0284C5]/30 bg-[#0F1C2D] hover:bg-[#0284C5]/25 cursor-pointer' : 'border-[#C8D3DF]/10 bg-[#0F1C2D]'}`}>
+                  <button className={`border-[1.5px] flex items-center justify-center rounded-lg w-12.5 h-12.5 ${connected ? 'border-[#0284C5]/30 bg-[#0F1C2D]' : 'border-[#C8D3DF]/10 bg-[#0F1C2D]'}`}>
                     <span className={`w-2 h-2 rounded-full ${connected ? 'bg-[#0284C5]' : 'bg-[#627084]'}`}></span>
                   </button>
 
                   <RotateNavButton
-                    onClick={() => handleRotate(90)}
+                    onClick={() => handleRotate(0)}
                     className={`transition-all duration-75 ${isActive('ArrowRight') ? 'scale-95 bg-[#3CE89B] shadow-[0_0_9.6px_#3CE89B40,0_0_5px_#3CE89B40] bg-linear-to-r from-[#3CE89B] to-[#228257]' : ''} ${connected ? 'border-[#C8D3DF] bg-[#324052]/50 cursor-pointer hover:bg-[#3CE89B] hover:border-0 hover:shadow-[0_0_9.6px_#3CE89B40,0_0_5px_#3CE89B40] hover:bg-linear-to-r hover:from-[#3CE89B] hover:to-[#228257] transition-all' : 'border-[#2A3646] bg-[#0F1C2D]'}`}>
                     <RotateCw className={`w-4.5 h-4.5 stroke-2 transition-colors ${isActive('ArrowRight') ? 'stroke-[#0F1729]' : iconCls}`} />
                   </RotateNavButton>
@@ -384,8 +393,9 @@ function App() {
                   {/* Row 3 — Down */}
                   <div />
                   <ArrowNavButton
-                    onClick={() => { if (connected) publish(TOPICS.CMD_DIRECTION, { direction: 'backward' }, QOS_CMD); }}
-                    className={`transition-all duration-75 ${isActive('ArrowDown') ? 'bg-[#3CE89B] shadow-[0_0_9.6px_#3CE89B40,0_0_5px_#3CE89B40] bg-linear-to-r from-[#3CE89B] to-[#228257] transition-all scale-95' : ''} ${connected ? 'border-[#C8D3DF] bg-[#324052]/50 cursor-pointer hover:bg-[#3CE89B] hover:border-0 hover:shadow-[0_0_9.6px_#3CE89B40,0_0_5px_#3CE89B40] hover:bg-linear-to-r hover:from-[#3CE89B] hover:to-[#228257] transition-all' : 'border-[#2A3646] bg-[#0F1C2D]'}  `}>
+                    onClick={() => handleDirection('backward')}
+                    className={`transition-all duration-75 ${isActive('ArrowDown') ? 'bg-[#3CE89B] shadow-[0_0_9.6px_#3CE89B40,0_0_5px_#3CE89B40] bg-linear-to-r from-[#3CE89B] to-[#228257] transition-all scale-95' : ''} ${connected ? 'border-[#C8D3DF] bg-[#324052]/50 cursor-pointer hover:bg-[#3CE89B] hover:border-0 hover:shadow-[0_0_9.6px_#3CE89B40,0_0_5px_#3CE89B40] hover:bg-linear-to-r hover:from-[#3CE89B] hover:to-[#228257] transition-all' : 'border-[#2A3646] bg-[#0F1C2D]'}  `}
+                  >
                     <ArrowDown className={`w-4.5 h-4.5 stroke-2 transition-colors ${isActive('ArrowDown') ? 'stroke-[#0F1729]' : iconCls}`} />
                   </ArrowNavButton>
                   <div />
@@ -393,16 +403,16 @@ function App() {
               </div>
             </div>
 
-            {/* Movement & Speed panel */}
+            {/* Gait & Speed panel */}
             <div className={`flex flex-1 flex-col rounded-lg p-4 gap-3 ${panelCls}`}>
-              <div className={`text-[14px] tracking-[4px] pb-2 ${titleCls}`}>Movements</div>
+              <div className={`text-[14px] tracking-[4px] pb-2 ${titleCls}`}>Gait &amp; Speed</div>
 
-              {/* Movement buttons — 3×2 grid = all 6 firmware commands */}
-              <div className='grid grid-cols-2 grid-rows-3 gap-0.5'>
-              {['FORWARD', 'BACKWARD', 'ROTATE L', 'ROTATE R', 'SQUAT', 'WIGGLE'].map((label) => (
+              {/* Gait buttons */}
+              <div className='grid grid-cols-2 grid-rows-2 gap-0.5'>
+              {[ 'WIGGLE', 'SQUAT'].map((label) => (
                 <MovButton
                   key={label}
-                  onClick={() => handleMove(label)}
+                  onClick={() => handleGait(label)}
                   className={`${
                     activeGait === label
                       ? 'bg-linear-to-r from-[#3CE89B] to-[#228257] text-[#0F1729] border-0 shadow-[0_0_9.6px_#3CE89B40]'
@@ -424,6 +434,7 @@ function App() {
                 <SpeedSlider
                   value={speed}
                   onChange={handleSpeed}
+                  connected={connected}
                   className={`${connected ? 'bg-[#43567F]' : 'bg-[#43567F66]'}`}
                 />
               </div>
@@ -448,7 +459,7 @@ function App() {
                 : 'border border-[#17CFBF]/40'    // disconnected
             }`}>
 
-              
+
               {camFrame ? (
                 <img src={camFrame} alt='camera feed' className='w-full h-full object-cover' />
               ) : (
