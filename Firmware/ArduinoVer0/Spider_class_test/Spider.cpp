@@ -71,33 +71,31 @@ void Spider::rest() {
 
 
 void Spider::moveForward(int iterations) {
-  ForwardMovement forward;
+  static ForwardMovement forward;
   executeMovement(forward, iterations);
 }
 
 void Spider::moveBackward(int iterations) {
-  BackwardMovement backward;
+  static BackwardMovement backward;
   executeMovement(backward, iterations);
 }
 
 void Spider::RotateRight(int iterations) {
-  RotateRightMovement rotateright;
+  static RotateRightMovement rotateright;
   executeMovement(rotateright, iterations);
 }
 
 void Spider::RotateLeft(int iterations) {
-  RotateLeftMovement rotateleft;
+  static RotateLeftMovement rotateleft;
   executeMovement(rotateleft, iterations);
 }
-//added squatting THE MOST UNDERRATED MOVE OAT
-void Spider :: Squat(int iterations){
-  SquatMovement squat;
-  executeMovement(squat,iterations);
+
+void Spider::Squat(int iterations) {
+  static SquatMovement squat;
+  executeMovement(squat, iterations);
 }
 
-
-//added wiggling
-void Spider :: Wiggle(int iterations){
-  WiggleMovement wiggle;
-  executeMovement(wiggle,iterations);
+void Spider::Wiggle(int iterations) {
+  static WiggleMovement wiggle;
+  executeMovement(wiggle, iterations);
 }
