@@ -3,4 +3,5 @@ node_modules/
 *.csr
 *.srl
 passwd
+mosquitto/mosquitto-local.conf
 .claude/
