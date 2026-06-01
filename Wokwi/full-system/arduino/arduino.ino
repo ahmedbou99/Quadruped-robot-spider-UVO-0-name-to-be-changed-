@@ -14,20 +14,7 @@ spider.rest();
 
 void loop() {
   if (Serial.available() > 0) {
-    String line = Serial.readStringUntil('\n');
-    line.trim();
-    if (line.length() == 0) return;
-
-    if (line[0] == 'S') {
-      int spd = line.substring(1).toInt();
-      spider.setSpeed(spd);
-      Serial.print("Speed set to ");
-      Serial.print(spd);
-      Serial.println("%");
-      return;
-    }
-
-    int mv = line.toInt();
+    int mv = Serial.parseInt();
 
     switch (mv) {
       case 1:
@@ -60,7 +47,7 @@ void loop() {
         break;
     }
   }
-  delay(10);
+  delay(100);
 }
 
 

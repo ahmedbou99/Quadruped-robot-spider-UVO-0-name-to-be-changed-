@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "author": "S4l1",
+  "editor": "web",
+  "parts": [
+    {
+      "type": "board-esp32-devkit-c-v4",
+      "id": "esp",
+      "top": 100,
+      "left": 100,
+      "attrs": {}
+    }
+  ],
+  "connections": [],
+  "serialMonitor": {
+    "display": "always",
+    "newline": "lf",
+    "baudRate": 115200
+  }
+}

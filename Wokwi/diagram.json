@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "author": "S4l1",
+  "editor": "web",
+  "parts": [
+    {
+      "type": "wokwi-arduino-uno",
+      "id": "uno",
+      "top": 280,
+      "left": 220,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-servo",
+      "id": "servo-rf-hip",
+      "top": 60,
+      "left": 450,
+      "attrs": { "label": "RF Hip (11)" }
+    },
+    {
+      "type": "wokwi-servo",
+      "id": "servo-rf-knee",
+      "top": 180,
+      "left": 450,
+      "attrs": { "label": "RF Knee (10)" }
+    },
+    {
+      "type": "wokwi-servo",
+      "id": "servo-rb-hip",
+      "top": 380,
+      "left": 450,
+      "attrs": { "label": "RB Hip (7)" }
+    },
+    {
+      "type": "wokwi-servo",
+      "id": "servo-rb-knee",
+      "top": 500,
+      "left": 450,
+      "attrs": { "label": "RB Knee (6)" }
+    },
+    {
+      "type": "wokwi-servo",
+      "id": "servo-lf-hip",
+      "top": 60,
+      "left": -20,
+      "attrs": { "label": "LF Hip (9)" }
+    },
+    {
+      "type": "wokwi-servo",
+      "id": "servo-lf-knee",
+      "top": 180,
+      "left": -20,
+      "attrs": { "label": "LF Knee (8)" }
+    },
+    {
+      "type": "wokwi-servo",
+      "id": "servo-lb-hip",
+      "top": 380,
+      "left": -20,
+      "attrs": { "label": "LB Hip (5)" }
+    },
+    {
+      "type": "wokwi-servo",
+      "id": "servo-lb-knee",
+      "top": 500,
+      "left": -20,
+      "attrs": { "label": "LB Knee (4)" }
+    }
+  ],
+  "connections": [
+    ["uno:5V", "servo-rf-hip:VCC", "red"],
+    ["uno:GND.1", "servo-rf-hip:GND", "black"],
+    ["uno:11", "servo-rf-hip:PWM", "orange"],
+
+    ["uno:5V", "servo-rf-knee:VCC", "red"],
+    ["uno:GND.1", "servo-rf-knee:GND", "black"],
+    ["uno:10", "servo-rf-knee:PWM", "orange"],
+
+    ["uno:5V", "servo-rb-hip:VCC", "red"],
+    ["uno:GND.1", "servo-rb-hip:GND", "black"],
+    ["uno:7", "servo-rb-hip:PWM", "orange"],
+
+    ["uno:5V", "servo-rb-knee:VCC", "red"],
+    ["uno:GND.1", "servo-rb-knee:GND", "black"],
+    ["uno:6", "servo-rb-knee:PWM", "orange"],
+
+    ["uno:5V", "servo-lf-hip:VCC", "red"],
+    ["uno:GND.1", "servo-lf-hip:GND", "black"],
+    ["uno:9", "servo-lf-hip:PWM", "orange"],
+
+    ["uno:5V", "servo-lf-knee:VCC", "red"],
+    ["uno:GND.1", "servo-lf-knee:GND", "black"],
+    ["uno:8", "servo-lf-knee:PWM", "orange"],
+
+    ["uno:5V", "servo-lb-hip:VCC", "red"],
+    ["uno:GND.1", "servo-lb-hip:GND", "black"],
+    ["uno:5", "servo-lb-hip:PWM", "orange"],
+
+    ["uno:5V", "servo-lb-knee:VCC", "red"],
+    ["uno:GND.1", "servo-lb-knee:GND", "black"],
+    ["uno:4", "servo-lb-knee:PWM", "orange"]
+  ],
+  "serialMonitor": {
+    "display": "always",
+    "newline": "lf",
+    "baudRate": 9600
+  }
+}

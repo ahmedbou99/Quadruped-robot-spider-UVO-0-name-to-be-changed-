@@ -1,0 +1,6 @@
+node_modules/
+*.key
+*.csr
+*.srl
+passwd
+.claude/

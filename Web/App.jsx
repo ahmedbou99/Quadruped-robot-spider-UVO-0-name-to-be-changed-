@@ -8,9 +8,10 @@ import { RotateNavButton } from './components/Rotate-Nav-Button';
 import { SpeedSlider } from './components/Speed_Slider';
 
 // MQTT CONFIG
-const BROKER_URL  = 'wss://mqtt.local:9001';        // WebSocket TLS 
+const BROKER_URL  = 'ws://mqtt.local:9002';         // plain WebSocket for local dev
+const BROKER_URL_TLS = 'wss://mqtt.local:9001';    // WebSocket + TLS for production
 const MQTT_OPTS = {
-  username : 'dashboard',                            // dashboard user 
+  username : 'dashboard',                            // dashboard user
   password : 'dash123',
   clientId : `dashboard_${Math.random().toString(16).slice(2,8)}`, // unique client ID
   clean    : true,
@@ -36,7 +37,7 @@ const QOS_STATUS = 1;   // LWT / status
 
 // Broker Connection Modal 
 const BrokerModal = ({ onCancel, onConnect }) => {
-  const [form, setForm] = useState({ host: 'mqtt.local', port: '9001', clientId: 'dashboard', password: 'dash123' });
+  const [form, setForm] = useState({ host: 'mqtt.local', port: '9002', clientId: 'dashboard', password: 'dash123' });
   const [errors, setErrors] = useState({ host: '', port: '', clientId: '', password: '' });
   const [authError, setAuthError] = useState('');
 
@@ -52,8 +53,7 @@ const BrokerModal = ({ onCancel, onConnect }) => {
     if (!form.host.trim())   { newErrors.host     = 'Broker IP / Host is required.'; valid = false; }
     if (!form.port.trim())   { newErrors.port     = 'Port is required.';             valid = false; }
     else if (!/^\d+$/.test(form.port.trim())) { newErrors.port = 'Port must be a number.'; valid = false; }
-    if (!form.clientId.trim()) { newErrors.clientId = 'Username is required.';       valid = false; }
-    if (!form.password.trim()) { newErrors.password = 'Password is required. Leave blank only if the broker is anonymous.'; valid = false; }
+    if (!form.password.trim() && form.clientId.trim()) { newErrors.password = 'Password required when username is set.'; valid = false; }
     setErrors(newErrors);
     if (!valid) return;
     onConnect(form, setAuthError);
@@ -182,11 +182,14 @@ function App() {
   };
 
   const handleModalConnect = (form, setAuthError) => {
-    const url  = `wss://${form.host}:${form.port}`;
+    const tlsPorts = ['9001', '8883', '8081', '443'];
+    const protocol = tlsPorts.includes(form.port) ? 'wss' : 'ws';
+    const path = form.host === 'broker.emqx.io' ? '/mqtt' : '';
+    const url  = `${protocol}://${form.host}:${form.port}${path}`;
     const opts = {
       ...MQTT_OPTS,
-      username : form.clientId,
-      password : form.password,
+      username : form.clientId.trim() || undefined,
+      password : form.password.trim() || undefined,
     };
 
     const client = mqtt.connect(url, opts);
@@ -241,19 +244,21 @@ function App() {
     //setRobotOnline(false);
   };
 
-  // Gait publish 
-  const GAIT_MAP = {
-    WALK   : 'tripod',
-    WIGGLE : 'wave',
-    CRAWL  : 'crawl',
-    STAND  : 'ripple',
+  // Movement buttons — map label → direction value sent over MQTT
+  const MOVEMENT_MAP = {
+    'FORWARD':  'forward',
+    'BACKWARD': 'backward',
+    'ROTATE L': 'left',
+    'ROTATE R': 'right',
+    'SQUAT':    'squat',
+    'WIGGLE':   'wiggle',
   };
 
-  const handleGait = (label) => {
+  const handleMove = (label) => {
     if (!connected) return;
-    const gait = GAIT_MAP[label];
+    const dir = MOVEMENT_MAP[label];
     setActiveGait(label);
-    publish(TOPICS.CMD_GAIT, { gait }, QOS_CMD);
+    publish(TOPICS.CMD_DIRECTION, { direction: dir }, QOS_CMD);
     setTimeout(() => setActiveGait(null), 150);
   };
 
@@ -349,32 +354,38 @@ function App() {
 
                   {/* Row 1 — Up */}
                   <div />
-                  <ArrowNavButton className={`transition-all duration-75 ${isActive('ArrowUp') ? 'scale-95 bg-[#3CE89B] shadow-[0_0_9.6px_#3CE89B40,0_0_5px_#3CE89B40] bg-linear-to-r from-[#3CE89B] to-[#228257] transition-all' : ''} ${connected ? 'border-[#C8D3DF] bg-[#324052]/50 cursor-pointer hover:bg-[#3CE89B] hover:border-0 hover:shadow-[0_0_9.6px_#3CE89B40,0_0_5px_#3CE89B40] hover:bg-linear-to-r hover:from-[#3CE89B] hover:to-[#228257] transition-all' : 'border-[#2A3646] bg-[#0F1C2D]'} `}>
+                  <ArrowNavButton
+                    onClick={() => { if (connected) publish(TOPICS.CMD_DIRECTION, { direction: 'forward' }, QOS_CMD); }}
+                    className={`transition-all duration-75 ${isActive('ArrowUp') ? 'scale-95 bg-[#3CE89B] shadow-[0_0_9.6px_#3CE89B40,0_0_5px_#3CE89B40] bg-linear-to-r from-[#3CE89B] to-[#228257] transition-all' : ''} ${connected ? 'border-[#C8D3DF] bg-[#324052]/50 cursor-pointer hover:bg-[#3CE89B] hover:border-0 hover:shadow-[0_0_9.6px_#3CE89B40,0_0_5px_#3CE89B40] hover:bg-linear-to-r hover:from-[#3CE89B] hover:to-[#228257] transition-all' : 'border-[#2A3646] bg-[#0F1C2D]'} `}>
                     <ArrowUp className={`w-4.5 h-4.5 stroke-2 transition-colors ${isActive('ArrowUp') ? 'stroke-[#0F1729]' : iconCls} `} />
                   </ArrowNavButton>
                   <div />
 
                   {/* Row 2 — Rotate left / center dot / Rotate right */}
                   <RotateNavButton
-                    onClick={() => handleRotate(0)}
+                    onClick={() => handleRotate(-90)}
                     className={`transition-all duration-75 ${isActive('ArrowLeft') ? 'scale-95 bg-[#3CE89B] shadow-[0_0_9.6px_#3CE89B40,0_0_5px_#3CE89B40] bg-linear-to-r from-[#3CE89B] to-[#228257]' : ''} ${connected ? 'border-[#C8D3DF] bg-[#324052]/50 cursor-pointer hover:bg-[#3CE89B] hover:border-0 hover:shadow-[0_0_9.6px_#3CE89B40,0_0_5px_#3CE89B40] hover:bg-linear-to-r hover:from-[#3CE89B] hover:to-[#228257] transition-all' : 'border-[#2A3646] bg-[#0F1C2D]'}`}>
                     <RotateCcw className={`w-4.5 h-4.5 stroke-2 transition-colors ${isActive('ArrowLeft') ? 'stroke-[#0F1729]' : iconCls}`} />
                   </RotateNavButton>
 
                   {/* Center dot button */}
-                  <button className={`border-[1.5px] flex items-center justify-center rounded-lg w-12.5 h-12.5 ${connected ? 'border-[#0284C5]/30 bg-[#0F1C2D]' : 'border-[#C8D3DF]/10 bg-[#0F1C2D]'}`}>
+                  <button
+                    onClick={() => { if (connected) publish(TOPICS.CMD_DIRECTION, { direction: 'stop' }, QOS_CMD); }}
+                    className={`border-[1.5px] flex items-center justify-center rounded-lg w-12.5 h-12.5 ${connected ? 'border-[#0284C5]/30 bg-[#0F1C2D] hover:bg-[#0284C5]/25 cursor-pointer' : 'border-[#C8D3DF]/10 bg-[#0F1C2D]'}`}>
                     <span className={`w-2 h-2 rounded-full ${connected ? 'bg-[#0284C5]' : 'bg-[#627084]'}`}></span>
                   </button>
 
                   <RotateNavButton
-                    onClick={() => handleRotate(0)}
+                    onClick={() => handleRotate(90)}
                     className={`transition-all duration-75 ${isActive('ArrowRight') ? 'scale-95 bg-[#3CE89B] shadow-[0_0_9.6px_#3CE89B40,0_0_5px_#3CE89B40] bg-linear-to-r from-[#3CE89B] to-[#228257]' : ''} ${connected ? 'border-[#C8D3DF] bg-[#324052]/50 cursor-pointer hover:bg-[#3CE89B] hover:border-0 hover:shadow-[0_0_9.6px_#3CE89B40,0_0_5px_#3CE89B40] hover:bg-linear-to-r hover:from-[#3CE89B] hover:to-[#228257] transition-all' : 'border-[#2A3646] bg-[#0F1C2D]'}`}>
                     <RotateCw className={`w-4.5 h-4.5 stroke-2 transition-colors ${isActive('ArrowRight') ? 'stroke-[#0F1729]' : iconCls}`} />
                   </RotateNavButton>
 
                   {/* Row 3 — Down */}
                   <div />
-                  <ArrowNavButton className={`transition-all duration-75 ${isActive('ArrowDown') ? 'bg-[#3CE89B] shadow-[0_0_9.6px_#3CE89B40,0_0_5px_#3CE89B40] bg-linear-to-r from-[#3CE89B] to-[#228257] transition-all scale-95' : ''} ${connected ? 'border-[#C8D3DF] bg-[#324052]/50 cursor-pointer hover:bg-[#3CE89B] hover:border-0 hover:shadow-[0_0_9.6px_#3CE89B40,0_0_5px_#3CE89B40] hover:bg-linear-to-r hover:from-[#3CE89B] hover:to-[#228257] transition-all' : 'border-[#2A3646] bg-[#0F1C2D]'}  `}>
+                  <ArrowNavButton
+                    onClick={() => { if (connected) publish(TOPICS.CMD_DIRECTION, { direction: 'backward' }, QOS_CMD); }}
+                    className={`transition-all duration-75 ${isActive('ArrowDown') ? 'bg-[#3CE89B] shadow-[0_0_9.6px_#3CE89B40,0_0_5px_#3CE89B40] bg-linear-to-r from-[#3CE89B] to-[#228257] transition-all scale-95' : ''} ${connected ? 'border-[#C8D3DF] bg-[#324052]/50 cursor-pointer hover:bg-[#3CE89B] hover:border-0 hover:shadow-[0_0_9.6px_#3CE89B40,0_0_5px_#3CE89B40] hover:bg-linear-to-r hover:from-[#3CE89B] hover:to-[#228257] transition-all' : 'border-[#2A3646] bg-[#0F1C2D]'}  `}>
                     <ArrowDown className={`w-4.5 h-4.5 stroke-2 transition-colors ${isActive('ArrowDown') ? 'stroke-[#0F1729]' : iconCls}`} />
                   </ArrowNavButton>
                   <div />
@@ -382,16 +393,16 @@ function App() {
               </div>
             </div>
 
-            {/* Gait & Speed panel */}
+            {/* Movement & Speed panel */}
             <div className={`flex flex-1 flex-col rounded-lg p-4 gap-3 ${panelCls}`}>
-              <div className={`text-[14px] tracking-[4px] pb-2 ${titleCls}`}>Gait &amp; Speed</div>
- 
-              {/* Gait buttons */}
-              <div className='grid grid-cols-2 grid-rows-2 gap-0.5'>
-              {['WALK', 'WIGGLE', 'CRAWL', 'STAND'].map((label) => (
+              <div className={`text-[14px] tracking-[4px] pb-2 ${titleCls}`}>Movements</div>
+
+              {/* Movement buttons — 3×2 grid = all 6 firmware commands */}
+              <div className='grid grid-cols-2 grid-rows-3 gap-0.5'>
+              {['FORWARD', 'BACKWARD', 'ROTATE L', 'ROTATE R', 'SQUAT', 'WIGGLE'].map((label) => (
                 <MovButton
                   key={label}
-                  onClick={() => handleGait(label)}
+                  onClick={() => handleMove(label)}
                   className={`${
                     activeGait === label
                       ? 'bg-linear-to-r from-[#3CE89B] to-[#228257] text-[#0F1729] border-0 shadow-[0_0_9.6px_#3CE89B40]'

@@ -26,10 +26,6 @@ void Spider::shutdown() {
   Serial.println("Spider rgod b333");
 }
 
-void Spider::setSpeed(int pct) {
-  speedPercent = constrain(pct, 0, 100);
-}
-
 void Spider::executeMovement(Movement& movement, int iterations) {
   Serial.print("rah yemchi: ");
   Serial.println(movement.name);
@@ -42,9 +38,7 @@ void Spider::executeMovement(Movement& movement, int iterations) {
         legs[leg].setPosition(hipAngle, kneeAngle);
       }
       
-      int adjDelay = movement.delayMs * (200 - speedPercent * 3 / 2) / 100;
-      if (adjDelay < 1) adjDelay = 1;
-      delay(adjDelay);
+      delay(movement.delayMs);
     }
   }
 }
