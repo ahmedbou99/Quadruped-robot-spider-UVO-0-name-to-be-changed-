@@ -88,8 +88,8 @@ enum {
 // ───────────────────────────────────
 //  CAMERA SETTINGS
 // ───────────────────────────────────
-#define CAM_FRAME_INTERVAL 500   // ms between frames (~2 fps)
-#define CAM_JPEG_QUALITY   30    // 0-63, lower=better (30 = smaller files)
+#define CAM_FRAME_INTERVAL 333   // ms between frames (~3 fps)
+#define CAM_JPEG_QUALITY   12    // 0-63, lower=better quality
 
 // ───────────────────────────────────
 //  TLS (uncomment for port 8883)
@@ -168,7 +168,7 @@ void setup() {
 #endif
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
   mqtt.setCallback(mqttCallback);
-  mqtt.setBufferSize(12288);  // enough for camera frames
+  mqtt.setBufferSize(36864);  // match camBuf for QVGA frames
   connectMQTT();
 
   // ── Serial2 to Arduino ──
@@ -265,7 +265,7 @@ bool initCamera() {
   config.pin_reset    = CAM_PIN_RESET;
   config.xclk_freq_hz = 20000000;
   config.pixel_format  = PIXFORMAT_JPEG;
-  config.frame_size    = FRAMESIZE_QQVGA;  // 160×120 (smaller frames = no stack overflow)
+  config.frame_size    = FRAMESIZE_QVGA;   // 320×240
   config.jpeg_quality  = CAM_JPEG_QUALITY;
   config.fb_count      = 1;
 
@@ -296,7 +296,7 @@ bool initCamera() {
 //  CAMERA CAPTURE + PUBLISH
 // ───────────────────────────────────
 // Static buffer for camera JSON payload (12KB, in BSS not stack)
-static char camBuf[12288];
+static char camBuf[36864];  // 36KB for QVGA base64 frames
 
 void captureAndPublish() {
   if (!mqtt.connected()) return;
@@ -313,7 +313,7 @@ void captureAndPublish() {
   size_t jsonTail = 30;                     // ","timestamp":1234567890}
   size_t total = jsonHead + b64Max + jsonTail;
 
-  if (total >= sizeof(camBuf)) {
+  if (total >= sizeof(camBuf) - 100) {
     // Frame too large, skip
     esp_camera_fb_return(fb);
     return;
