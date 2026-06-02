@@ -172,8 +172,12 @@ function App() {
 
   // MQTT helpers 
   const publish = (topic, payload, qos = QOS_CMD) => {
-    if (!mqttClientRef.current) return;
-    mqttClientRef.current.publish(topic, JSON.stringify(payload), { qos });
+    console.log('PUBLISH', topic, payload);
+    if (!mqttClientRef.current) { console.log('PUBLISH FAIL: no client'); return; }
+    mqttClientRef.current.publish(topic, JSON.stringify(payload), { qos }, (err) => {
+      if (err) console.log('PUBLISH ERROR:', err);
+      else console.log('PUBLISH OK:', topic);
+    });
   };
 
   const handleHeaderButton = () => {
