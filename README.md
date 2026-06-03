@@ -29,7 +29,7 @@ cd Web && npm install && npm run dev
 # 6. Flash ESP32-CAM
 # Open: Firmware/ESP32_MQTT_Bridge/ESP32CAM_Bridge.ino
 # Board: AI-Thinker ESP32-CAM
-# Edit WiFi credentials at top of file FIRST
+# Edit WiFi credentials at top of file FIRST and Change local.mqtt to the user Ip
 ```
 
 ## Architecture
